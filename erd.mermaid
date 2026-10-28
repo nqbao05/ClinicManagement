@@ -1,0 +1,37 @@
+erDiagram
+    CLINIC {
+        int clinic_id PK
+        string name
+        string location
+        string db_node_ip
+    }
+    
+    DOCTOR {
+        int doctor_id PK
+        int clinic_id FK
+        string full_name
+        string specialty
+    }
+    
+    PATIENT {
+        int patient_id PK
+        int origin_clinic_id FK "Sharding Key: Node CSDL gốc"
+        string full_name
+        string phone_number
+        string medical_history
+    }
+    
+    APPOINTMENT {
+        int appointment_id PK
+        int patient_id FK
+        int doctor_id FK
+        int clinic_id FK
+        datetime slot_time
+        string status "Pending, Confirmed, Cancelled"
+    }
+
+    CLINIC ||--o{ DOCTOR : "has"
+    CLINIC ||--o{ PATIENT : "manages (sharding)"
+    CLINIC ||--o{ APPOINTMENT : "hosts"
+    DOCTOR ||--o{ APPOINTMENT : "assigned_to"
+    PATIENT ||--o{ APPOINTMENT : "books"

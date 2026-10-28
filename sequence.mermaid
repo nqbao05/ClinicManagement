@@ -1,0 +1,25 @@
+sequenceDiagram
+    autonumber
+    actor P as Bệnh nhân (Client / App)
+    participant UI as Frontend (Next.js/Android)
+    participant API as API Gateway (Backend)
+    participant DB as Database (Node Chi nhánh)
+
+    P->>UI: Chọn giờ khám (VD: 09:00 AM) và bấm Đặt lịch
+    UI->>UI: Chuyển trạng thái UI sang Loading (Hiển thị Spinner/Skeleton)
+    UI->>API: POST /api/appointments (Bác sĩ X, 09:00 AM)
+    
+    API->>DB: Bắt đầu Transaction (Begin)
+    API->>DB: SELECT * FROM Appointments WHERE time='09:00' AND doctor='X' FOR UPDATE
+    
+    alt Slot đã bị người khác đặt trước (Race Condition)
+        DB-->>API: Trả về dữ liệu báo slot đã có chủ
+        API-->>UI: Response 409 Conflict (Lỗi trùng lịch)
+        UI->>UI: Chuyển trạng thái UI sang Error (Fallback UI: Báo lỗi màu đỏ)
+    else Slot trống (Hợp lệ)
+        API->>DB: INSERT INTO Appointments (Patient, Doctor, Time, Status)
+        DB-->>API: Trả về kết quả thành công
+        API->>DB: Commit Transaction
+        API-->>UI: Response 200 OK (Thành công)
+        UI->>UI: Chuyển trạng thái UI sang Success (Hiển thị vé điện tử)
+    end
