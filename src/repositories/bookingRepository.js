@@ -1,4 +1,4 @@
-const Booking = require('./booking.model');
+const Booking = require('../models/booking');
 
 class BookingRepository {
   constructor(db) {

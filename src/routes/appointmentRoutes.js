@@ -1,5 +1,5 @@
 const express = require('express');
-const createAppointmentController = require('./appointment.controller');
+const createAppointmentController = require('../controllers/appointmentController');
 
 function createAppointmentRoutes(service) {
   const router = express.Router();
@@ -37,4 +37,3 @@ function createAppointmentRoutes(service) {
 }
 
 module.exports = createAppointmentRoutes;
-

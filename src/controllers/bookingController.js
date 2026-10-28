@@ -1,4 +1,4 @@
-const { BookingConflictError, BookingValidationError } = require('./booking.service');
+const { BookingConflictError, BookingValidationError } = require('../services/bookingService');
 
 function createBookingController(service) {
   return {

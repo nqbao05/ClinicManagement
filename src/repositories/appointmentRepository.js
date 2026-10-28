@@ -1,4 +1,4 @@
-const Appointment = require('./appointment.model');
+const Appointment = require('../models/appointment');
 
 class AppointmentRepository {
   constructor(db) {
@@ -34,4 +34,3 @@ class AppointmentRepository {
 }
 
 module.exports = AppointmentRepository;
-

@@ -1,4 +1,4 @@
-const { SlotConflictError } = require('./appointment.service');
+const { SlotConflictError } = require('../services/appointmentService');
 
 function createAppointmentController(service) {
   return {
@@ -25,4 +25,3 @@ function createAppointmentController(service) {
 }
 
 module.exports = createAppointmentController;
-

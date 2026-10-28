@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const Booking = require('./booking.model');
+const Booking = require('../models/booking');
 
 class BookingConflictError extends Error {
   constructor(message = 'Khung giờ khám này đã có bệnh nhân khác đặt thành công') {

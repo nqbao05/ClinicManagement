@@ -1,9 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const Booking = require('../src/modules/booking/booking.model');
-const BookingRepository = require('../src/modules/booking/booking.repository');
-const { BookingService, BookingConflictError, BookingValidationError } = require('../src/modules/booking/booking.service');
-const createBookingController = require('../src/modules/booking/booking.controller');
+const Booking = require('../src/models/booking');
+const BookingRepository = require('../src/repositories/bookingRepository');
+const { BookingService, BookingConflictError, BookingValidationError } = require('../src/services/bookingService');
+const createBookingController = require('../src/controllers/bookingController');
 const { createDatabase } = require('../src/config/database');
 
 test('BookingService creates booking successfully', () => {
