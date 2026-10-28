@@ -1,4 +1,4 @@
-const Appointment = require('../models/appointment');
+const Appointment = require('./appointment.model');
 
 class SlotConflictError extends Error {
   constructor() {
@@ -32,7 +32,6 @@ class AppointmentService {
         slot_time: normalizedSlot
       }));
     } catch (error) {
-      // The unique partial index is the final safety net for concurrent requests.
       if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
         throw new SlotConflictError();
       }
@@ -42,3 +41,4 @@ class AppointmentService {
 }
 
 module.exports = { AppointmentService, SlotConflictError };
+

@@ -39,6 +39,20 @@ function createDatabase(filePath = process.env.DATABASE_PATH || path.join(__dirn
       WHERE status <> 'Cancelled';
     CREATE INDEX IF NOT EXISTS ix_appointment_doctor_time
       ON appointments(doctor_id, slot_time);
+
+    CREATE TABLE IF NOT EXISTS bookings (
+      booking_id TEXT PRIMARY KEY,
+      patient_id TEXT NOT NULL,
+      doctor_id TEXT NOT NULL,
+      appointment_date TEXT NOT NULL,
+      slot_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'CONFIRMED'
+        CHECK(status IN ('PENDING', 'HOLDING', 'CONFIRMED', 'CANCELLED')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_active_booking_slot
+      ON bookings(doctor_id, appointment_date, slot_id)
+      WHERE status <> 'CANCELLED';
   `);
   return db;
 }
