@@ -164,3 +164,156 @@ Scenario: Nhân viên lễ tân bị Admin khóa tài khoản khi đang giữ To
 4. **Nhật ký kiểm toán (Audit Trail):**
    - Tất cả các sự kiện: Đăng nhập thành công, đăng nhập thất bại, khóa tài khoản, truy cập trái quyền (403) phải được lưu trữ vào Audit Log với đầy đủ `user_id`, `role`, `branch_id`, `ip_address`, `user_agent`.
 
+
+
+---
+
+## 5. THIẾT KẾ KIẾN TRÚC & BIỂU ĐỒ TUẦN TỰ (ARCHITECT SPECIFICATION)
+
+> *Tài liệu thiết kế kiến trúc toàn diện:* [docs/auth/auth-architecture.md](file:///c:/Project/ClinicManagement/docs/auth/auth-architecture.md)
+
+### 5.1. Sơ đồ Thực thể Dữ liệu Định danh (Mermaid ERD)
+Mô hình quan hệ thực thể giữa Chi nhánh (Branch), Vai trò (Role), Người dùng (User), Phiên làm việc (Refresh Token) và Nhật ký kiểm toán (Login Audit):
+
+```mermaid
+erDiagram
+    BRANCH ||--o{ USER : employs
+    ROLE ||--o{ USER : categorizes
+    USER ||--o{ REFRESH_TOKEN : owns
+    USER ||--o{ LOGIN_AUDIT : logs
+
+    BRANCH {
+        string branch_id PK "UUID khoa phong chi nhanh"
+        string branch_code "Ma dinh danh chi nhanh nhu HN hoac HCM"
+        string name "Ten phong kham co so y te"
+        string status "Trang thai hoat dong ACTIVE hoac INACTIVE"
+    }
+
+    ROLE {
+        string role_id PK "Dinh danh vai tro nhu PATIENT DOCTOR ADMIN"
+        string role_name "Ten hien thi cua vai tro"
+        string description "Mo ta pham vi quyen han"
+    }
+
+    USER {
+        string user_id PK "UUID dinh danh duy nhat nguoi dung"
+        string branch_id FK "Khoa ngoai tham chieu den BRANCH"
+        string role_id FK "Khoa ngoai tham chieu den ROLE"
+        string username "Ten dang nhap hoac dia chi email duy nhat"
+        string password_hash "Chuoi mat khau da ma hoa Argon2id hoac Bcrypt"
+        int failed_login_attempts "So lan dang nhap sai mat khau lien tiep"
+        datetime locked_until "Thoi diem het hieu luc khoa tai khoan tam thoi"
+        boolean is_active "Trang thai tai khoan duoc phep hoat dong"
+        datetime created_at "Thoi gian tao ban ghi"
+        datetime updated_at "Thoi gian cap nhat gan nhat"
+    }
+
+    REFRESH_TOKEN {
+        string token_id PK "UUID dinh danh duy nhat cua Refresh Token"
+        string user_id FK "Khoa ngoai tham chieu den USER so huu"
+        string token_hash "Chuoi bam SHA256 cua Refresh Token"
+        string family_id "UUID quan ly chuoi Refresh Token Rotation"
+        boolean is_revoked "Trang thai token da bi thu hoi hay chua"
+        datetime expires_at "Thoi gian token het hieu luc"
+        datetime created_at "Thoi gian cap phat token"
+        string user_agent "Thong tin trinh duyet va he dieu hanh"
+        string ip_address "Dia chi IP thuc hien dang nhap"
+    }
+
+    LOGIN_AUDIT {
+        string audit_id PK "UUID ban ghi nhat ky dang nhap"
+        string user_id FK "Khoa ngoai tham chieu den USER"
+        string ip_address "Dia chi IP thuc hien yeu cau dang nhap"
+        string status "Trang thai SUCCESS hoac FAILED hoac LOCKED"
+        string failure_reason "Nguyen nhan that bai neu co"
+        datetime created_at "Thoi diem ghi nhan su kien"
+    }
+```
+
+### 5.2. Sơ đồ Tuần tự: Luồng Đăng nhập bảo mật (Sequence Diagram)
+Biểu đồ mô tả tương tác end-to-end giữa Client, API Gateway, Auth Service, Central DB và Redis Cache, xử lý cả nhánh Thành công (cấp JWT Token đôi + HttpOnly Cookie) và Thất bại (Sai mật khẩu, Brute-force & Khóa tài khoản):
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as "Người dùng (Bác sĩ / Nhân viên)"
+    participant Client as "Frontend Client (SPA / React)"
+    participant GW as "API Gateway (Rate Limiter)"
+    participant AuthSvc as "Auth Service (Backend)"
+    participant Redis as "Redis Cache (Limit & Blacklist)"
+    participant DB as "Central Auth DB"
+
+    User->>Client: Nhập Username, Password và bấm "Đăng nhập"
+    Client->>GW: POST /api/v1/auth/login { username, password }
+    
+    %% Tầng Rate Limiting & Brute-Force Check
+    GW->>Redis: Kiểm tra IP Rate Limit (Sliding Window: 10 req/phút)
+    alt Vượt ngưỡng Rate Limit IP
+        Redis-->>GW: IP Limit Exceeded
+        GW-->>Client: 429 Too Many Requests { message: "Quá nhiều yêu cầu, vui lòng thử lại sau" }
+        Client-->>User: Hiển thị cảnh báo giới hạn tần suất
+    else IP hợp lệ
+        GW->>AuthSvc: Chuyển tiếp Request đăng nhập
+        AuthSvc->>DB: SELECT * FROM USERS WHERE username = ? AND is_active = true
+        
+        alt Tài khoản không tồn tại
+            DB-->>AuthSvc: Trả về null
+            AuthSvc->>AuthSvc: Thực hiện dummy hash so sánh (Chống Timing Attack)
+            AuthSvc-->>GW: 401 Unauthorized
+            GW-->>Client: 401 Unauthorized { message: "Tài khoản hoặc mật khẩu không chính xác" }
+            Client-->>User: Báo lỗi thông tin đăng nhập không đúng
+            
+        else Tìm thấy thông tin tài khoản
+            DB-->>AuthSvc: Trả về user record (password_hash, failed_login_attempts, locked_until)
+            
+            %% Kiểm tra trạng thái khóa tài khoản
+            alt Tài khoản đang bị tạm khóa (locked_until > NOW())
+                AuthSvc-->>GW: 423 Locked
+                GW-->>Client: 423 Locked { message: "Tài khoản đang bị tạm khóa do nhập sai nhiều lần" }
+                Client-->>User: Hiển thị thời gian còn lại cần chờ
+                
+            else Tài khoản sẵn sàng xác thực
+                AuthSvc->>AuthSvc: Kiểm tra mật khẩu: verifyPassword(password, password_hash)
+                
+                %% ================= NHÁNH THẤT BẠI: SAI MẬT KHẨU =================
+                alt Mật khẩu KHÔNG hợp lệ (Sai mật khẩu)
+                    AuthSvc->>DB: UPDATE USERS SET failed_login_attempts = failed_login_attempts + 1
+                    AuthSvc->>DB: INSERT INTO LOGIN_AUDIT (user_id, status, reason) VALUES (?, 'FAILED', 'WRONG_PW')
+                    
+                    alt failed_login_attempts >= 5
+                        AuthSvc->>DB: UPDATE USERS SET locked_until = NOW() + INTERVAL '15 MINUTE'
+                        AuthSvc-->>GW: 423 Locked
+                        GW-->>Client: 423 Locked { message: "Tài khoản đã bị tạm khóa 15 phút do nhập sai 5 lần" }
+                        Client-->>User: Hiển thị thông báo tài khoản bị khóa tạm thời
+                    else failed_login_attempts < 5
+                        AuthSvc-->>GW: 401 Unauthorized
+                        GW-->>Client: 401 Unauthorized { message: "Tài khoản hoặc mật khẩu không chính xác", remaining_attempts: 5 - failed_attempts }
+                        Client-->>User: Báo lỗi sai mật khẩu kèm số lần thử còn lại
+                    end
+                    
+                %% ================= NHÁNH THÀNH CÔNG =================
+                else Mật khẩu HỢP LỆ
+                    AuthSvc->>DB: UPDATE USERS SET failed_login_attempts = 0, locked_until = NULL
+                    
+                    %% Sinh JWT Token đôi
+                    AuthSvc->>AuthSvc: Sinh Access Token (JWT, TTL 15m, signed with RS256/Private Key)<br/>Payload: { sub: user_id, role, branch_id, jti }
+                    AuthSvc->>AuthSvc: Sinh Refresh Token (Opaque/Cryptographic Token, TTL 7d, family_id)
+                    
+                    %% Lưu Refresh Token vào Database & Cache để kiểm soát phiên
+                    AuthSvc->>DB: INSERT INTO REFRESH_TOKEN (user_id, token_hash, family_id, expires_at)
+                    AuthSvc->>Redis: SET session:{user_id}:{token_id} (TTL 7d)
+                    AuthSvc->>DB: INSERT INTO LOGIN_AUDIT (user_id, status) VALUES (?, 'SUCCESS')
+                    
+                    %% Phản hồi an toàn về Client
+                    AuthSvc-->>GW: 200 OK + Payload + Set-Cookie Header
+                    GW-->>Client: 200 OK<br/>Set-Cookie: refresh_token=...; HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth<br/>Body: { access_token, expires_in: 900, user: { user_id, role, branch_id, name } }
+                    
+                    %% Client xử lý Token
+                    Client->>Client: Lưu access_token vào In-Memory State (Zustand/Redux/React Context)
+                    Note over Client: Trình duyệt tự động lưu refresh_token vào Cookie bảo mật (JS không đọc được)
+                    Client-->>User: Chuyển hướng đến Dashboard theo Role và Branch
+                end
+            end
+        end
+    end
+```
