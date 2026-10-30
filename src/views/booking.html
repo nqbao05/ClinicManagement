@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clinic Management - Đặt Lịch Khám Bệnh</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: {
+              DEFAULT: '#0284c7',
+              foreground: '#ffffff',
+              hover: '#0369a1',
+            },
+            destructive: {
+              DEFAULT: '#ef4444',
+              foreground: '#ffffff',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Toastr (Notification UI mô phỏng Sonner Toast) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+  <style>
+    .toast-top-right { top: 20px; right: 20px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen py-10 px-4 flex flex-col items-center justify-center">
+
+  <div class="w-full max-w-xl bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden transition-all">
+    <!-- Header -->
+    <div class="px-6 py-5 border-b border-slate-100 bg-white">
+      <div class="flex items-center gap-3 text-sky-600 mb-1">
+        <i data-lucide="calendar-plus" class="w-7 h-7"></i>
+        <h1 class="text-xl sm:text-2xl font-bold text-slate-800">Đặt Lịch Khám Bệnh</h1>
+      </div>
+      <p class="text-sm text-slate-500">
+        Giao diện đồng bộ với API <code class="bg-slate-100 text-sky-700 px-1.5 py-0.5 rounded text-xs">POST /api/v1/bookings</code> chống trùng lặp slot khám.
+      </p>
+    </div>
+
+    <!-- Alert Fallback cho lỗi 409 Conflict -->
+    <div id="conflictAlert" class="hidden m-6 mb-0 p-4 border border-rose-200 bg-rose-50 rounded-xl text-rose-800 flex items-start gap-3">
+      <i data-lucide="alert-triangle" class="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5"></i>
+      <div>
+        <h4 class="font-semibold text-sm">Xung đột khung giờ</h4>
+        <p id="conflictAlertText" class="text-xs sm:text-sm mt-0.5 text-rose-700">Khung giờ này vừa có người khác đặt. Vui lòng chọn khung giờ khác!</p>
+      </div>
+    </div>
+
+    <!-- Booking Form -->
+    <form id="bookingForm" class="p-6 space-y-6">
+      
+      <!-- 1. Doctor Selection -->
+      <div class="space-y-2">
+        <label for="doctorSelect" class="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+          <i data-lucide="user-check" class="w-4 h-4 text-sky-600"></i> Bác sĩ khám bệnh
+        </label>
+        <select id="doctorSelect" required class="w-full h-11 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all">
+          <option value="">-- Vui lòng chọn Bác sĩ --</option>
+          <option value="a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d">BS. CKI Nguyễn Văn A (Nội khoa tổng quát)</option>
+          <option value="b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d7e">ThS. BS Trần Thị B (Tim mạch & Can thiệp)</option>
+          <option value="c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e8f">BS. CKII Lê Hoàng C (Răng - Hàm - Mặt)</option>
+        </select>
+      </div>
+
+      <!-- 2. Date Picker -->
+      <div class="space-y-2">
+        <label for="appointmentDate" class="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+          <i data-lucide="calendar" class="w-4 h-4 text-sky-600"></i> Ngày hẹn khám
+        </label>
+        <input 
+          type="date" 
+          id="appointmentDate" 
+          required
+          class="w-full h-11 px-3 border border-slate-300 rounded-lg bg-white text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent transition-all"
+        />
+      </div>
+
+      <!-- 3. Time Slots Grid -->
+      <div class="space-y-2">
+        <label class="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+          <i data-lucide="clock" class="w-4 h-4 text-sky-600"></i> Khung giờ khám (Chọn 1 khung giờ)
+        </label>
+        <div id="slotsGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <!-- Rendered via JS -->
+        </div>
+        <input type="hidden" id="selectedSlotId" required />
+      </div>
+
+      <!-- 4. Submit & Action Buttons -->
+      <div class="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
+        <button 
+          type="submit" 
+          id="submitBtn"
+          class="flex-1 h-11 bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm rounded-lg shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <span id="btnText">Đặt lịch ngay</span>
+          <span id="btnSpinner" class="hidden animate-spin">
+            <i data-lucide="loader-2" class="w-4 h-4"></i>
+          </span>
+        </button>
+
+        <button 
+          type="button" 
+          id="resetBtn"
+          class="h-11 px-4 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium text-sm rounded-lg transition-all flex items-center justify-center gap-1.5"
+        >
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Làm mới
+        </button>
+      </div>
+
+    </form>
+  </div>
+
+  <script>
+    // Khởi tạo Lucide Icons
+    lucide.createIcons();
+
+    // Cấu hình Toastr
+    toastr.options = {
+      closeButton: true,
+      progressBar: true,
+      positionClass: "toast-top-right",
+      timeOut: "4000"
+    };
+
+    // Danh sách slot mẫu
+    const SLOTS = [
+      { id: "slot-0800-0900", label: "08:00 - 09:00" },
+      { id: "slot-0900-1000", label: "09:00 - 10:00" },
+      { id: "slot-1000-1100", label: "10:00 - 11:00" },
+      { id: "slot-1100-1200", label: "11:00 - 12:00" },
+      { id: "slot-1330-1430", label: "13:30 - 14:30" },
+      { id: "slot-1430-1530", label: "14:30 - 15:30" },
+      { id: "slot-1530-1630", label: "15:30 - 16:30" },
+      { id: "slot-1630-1730", label: "16:30 - 17:30" },
+    ];
+
+    const slotsGrid = document.getElementById("slotsGrid");
+    const selectedSlotInput = document.getElementById("selectedSlotId");
+    const appointmentDateInput = document.getElementById("appointmentDate");
+    const doctorSelect = document.getElementById("doctorSelect");
+    const conflictAlert = document.getElementById("conflictAlert");
+    const submitBtn = document.getElementById("submitBtn");
+    const btnText = document.getElementById("btnText");
+    const btnSpinner = document.getElementById("btnSpinner");
+    const resetBtn = document.getElementById("resetBtn");
+
+    // Đặt ngày tối thiểu là hôm nay
+    const today = new Date().toISOString().split("T")[0];
+    appointmentDateInput.min = today;
+    appointmentDateInput.value = today;
+
+    // Render Slots Grid
+    function renderSlots() {
+      slotsGrid.innerHTML = "";
+      SLOTS.forEach(slot => {
+        const isSelected = selectedSlotInput.value === slot.id;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.dataset.id = slot.id;
+        btn.className = `h-11 px-2 text-xs sm:text-sm font-medium rounded-lg border transition-all flex items-center justify-center ${
+          isSelected 
+            ? "bg-sky-600 text-white border-sky-600 shadow-sm font-semibold" 
+            : "bg-white text-slate-700 border-slate-200 hover:border-sky-400 hover:bg-sky-50/50"
+        }`;
+        btn.textContent = slot.label;
+        btn.addEventListener("click", () => {
+          selectedSlotInput.value = slot.id;
+          conflictAlert.classList.add("hidden");
+          renderSlots();
+        });
+        slotsGrid.appendChild(btn);
+      });
+    }
+
+    renderSlots();
+
+    function setSubmitting(isSubmitting) {
+      if (isSubmitting) {
+        submitBtn.disabled = true;
+        btnText.textContent = "Đang xử lý...";
+        btnSpinner.classList.remove("hidden");
+      } else {
+        submitBtn.disabled = false;
+        btnText.textContent = "Đặt lịch ngay";
+        btnSpinner.classList.add("hidden");
+      }
+    }
+
+    function resetForm() {
+      doctorSelect.value = "";
+      appointmentDateInput.value = today;
+      selectedSlotInput.value = "";
+      conflictAlert.classList.add("hidden");
+      renderSlots();
+    }
+
+    resetBtn.addEventListener("click", resetForm);
+
+    // Xử lý gửi Form & Kết nối API
+    document.getElementById("bookingForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      conflictAlert.classList.add("hidden");
+
+      const doctorId = doctorSelect.value;
+      const appointmentDate = appointmentDateInput.value;
+      const slotId = selectedSlotInput.value;
+      const patientId = "d3b07384-d113-4a15-8e3b-5c742918e5a1"; // Mặc định patient
+
+      if (!doctorId) {
+        toastr.warning("Vui lòng chọn bác sĩ khám bệnh.");
+        return;
+      }
+      if (!appointmentDate) {
+        toastr.warning("Vui lòng chọn ngày khám.");
+        return;
+      }
+      if (!slotId) {
+        toastr.warning("Vui lòng click chọn 1 khung giờ khám.");
+        return;
+      }
+
+      setSubmitting(true);
+
+      try {
+        const response = await fetch("/api/v1/bookings", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+          },
+          body: JSON.stringify({
+            patientId,
+            doctorId,
+            appointmentDate,
+            slotId
+          })
+        });
+
+        // 1. Trùng lịch: 409 Conflict
+        if (response.status === 409) {
+          const msg = "Khung giờ này vừa có người khác đặt. Vui lòng chọn khung giờ khác!";
+          conflictAlert.classList.remove("hidden");
+          toastr.error(msg, "Lỗi Trùng Lịch");
+          selectedSlotInput.value = "";
+          renderSlots();
+          return;
+        }
+
+        // 2. Thành công: 200 OK hoặc 201 Created
+        if (response.status === 200 || response.status === 201) {
+          const result = await response.json();
+          toastr.success("Đặt lịch khám thành công!", "Thành công");
+          resetForm();
+          return;
+        }
+
+        // Lỗi khác
+        const errorData = await response.json().catch(() => ({}));
+        toastr.error(errorData.message || "Đặt lịch thất bại. Vui lòng thử lại!");
+      } catch (err) {
+        toastr.error("Không thể kết nối đến API máy chủ phòng khám!");
+      } finally {
+        setSubmitting(false);
+      }
+    });
+  </script>
+</body>
+</html>
+
