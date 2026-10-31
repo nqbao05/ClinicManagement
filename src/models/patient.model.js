@@ -38,12 +38,21 @@ class Patient {
     this.full_name = full_name ? String(full_name).trim() : '';
     this.phone_number = phone_number ? String(phone_number).trim() : '';
     this.gender = gender || 'Khac';
-    this.date_of_birth = date_of_birth || null;
+
+    if (date_of_birth instanceof Date) {
+      const y = date_of_birth.getFullYear();
+      const m = String(date_of_birth.getMonth() + 1).padStart(2, '0');
+      const d = String(date_of_birth.getDate()).padStart(2, '0');
+      this.date_of_birth = `${y}-${m}-${d}`;
+    } else {
+      this.date_of_birth = date_of_birth || null;
+    }
+
     this.address = address || null;
     this.blood_type = blood_type || null;
     this.medical_history = medical_history || null;
-    this.created_at = created_at || new Date().toISOString();
-    this.updated_at = updated_at || new Date().toISOString();
+    this.created_at = created_at instanceof Date ? created_at.toISOString() : (created_at || new Date().toISOString());
+    this.updated_at = updated_at instanceof Date ? updated_at.toISOString() : (updated_at || new Date().toISOString());
   }
 
   /**

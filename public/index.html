@@ -563,13 +563,16 @@
     // Seed mẫu 2 bệnh nhân nhanh
     async function seedSamplePatients() {
       try {
+        const uniqueHanoi = '001' + String(Date.now()).slice(-9);
+        const uniqueHcm = '079' + String(Date.now() + 1).slice(-9);
+
         await fetch('/api/patients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             origin_clinic_id: 1,
-            identity_card: '001201012345',
-            full_name: 'Nguyễn Văn P (BN102 - Hà Nội)',
+            identity_card: uniqueHanoi,
+            full_name: 'Bệnh nhân Mẫu Hà Nội #' + uniqueHanoi.slice(-4),
             phone_number: '0901234567',
             gender: 'Nam',
             blood_type: 'O+',
@@ -582,12 +585,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             origin_clinic_id: 2,
-            identity_card: '079201019999',
-            full_name: 'Trần Thị Mai (TP.HCM)',
+            identity_card: uniqueHcm,
+            full_name: 'Bệnh nhân Mẫu TP.HCM #' + uniqueHcm.slice(-4),
             phone_number: '0988888888',
             gender: 'Nu',
             blood_type: 'A+',
-            medical_history: 'Khám định kỳ tổng quát'
+            medical_history: 'Khám định kỳ sức khỏe tổng quát'
           })
         });
 

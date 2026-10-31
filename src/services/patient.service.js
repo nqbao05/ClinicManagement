@@ -1,4 +1,6 @@
-
+/**
+ * Custom Errors cho Service Layer
+ */
 class NotFoundError extends Error {
   constructor(message = 'Không tìm thấy hồ sơ bệnh nhân') {
     super(message);
@@ -39,16 +41,14 @@ class PatientService {
    * @returns {Object} Dữ liệu bệnh nhân vừa tạo
    */
   async create(patientData) {
-    // 1. Kiểm tra tính duy nhất của identity_card trên toàn hệ thống đa node
-    const existing = this.patientRepository.findByIdentityCard(patientData.identity_card);
+    const existing = await this.patientRepository.findByIdentityCard(patientData.identity_card);
     if (existing) {
       throw new DuplicatePatientError(
         `Bệnh nhân có số CCCD/CMND ${patientData.identity_card} đã tồn tại ở chi nhánh ${existing.origin_clinic_id}`
       );
     }
 
-    // 2. Lưu vào CSDL của node tương ứng với khóa phân mảnh origin_clinic_id
-    const createdPatient = this.patientRepository.create(patientData);
+    const createdPatient = await this.patientRepository.create(patientData);
     return createdPatient.toJSON();
   }
 
@@ -61,7 +61,7 @@ class PatientService {
    */
   async findAll(filter = {}, activeClinicId = null) {
     const effectiveClinicId = Number(activeClinicId || this.currentClinicId);
-    const patients = this.patientRepository.findAll(filter);
+    const patients = await this.patientRepository.findAll(filter);
 
     return patients.map((patient) => {
       const data = patient.toJSON();
@@ -82,7 +82,7 @@ class PatientService {
    */
   async findById(id, activeClinicId = null) {
     const effectiveClinicId = Number(activeClinicId || this.currentClinicId);
-    const patient = this.patientRepository.findById(id);
+    const patient = await this.patientRepository.findById(id);
 
     if (!patient) {
       throw new NotFoundError(`Không tìm thấy hồ sơ bệnh nhân với mã ID: ${id}`);
@@ -111,7 +111,7 @@ class PatientService {
    */
   async findByIdentityCard(identityCard, activeClinicId = null) {
     const effectiveClinicId = Number(activeClinicId || this.currentClinicId);
-    const patient = this.patientRepository.findByIdentityCard(identityCard);
+    const patient = await this.patientRepository.findByIdentityCard(identityCard);
 
     if (!patient) {
       throw new NotFoundError(`Không tìm thấy hồ sơ bệnh nhân có số CCCD/CMND: ${identityCard}`);
@@ -139,20 +139,19 @@ class PatientService {
    * @returns {Object}
    */
   async update(id, updateData) {
-    const existing = this.patientRepository.findById(id);
+    const existing = await this.patientRepository.findById(id);
     if (!existing) {
       throw new NotFoundError(`Không tìm thấy hồ sơ bệnh nhân để cập nhật với ID: ${id}`);
     }
 
-    // Nếu cập nhật CCCD, kiểm tra xem có bị trùng với bệnh nhân khác không
     if (updateData.identity_card && updateData.identity_card !== existing.identity_card) {
-      const duplicate = this.patientRepository.findByIdentityCard(updateData.identity_card);
+      const duplicate = await this.patientRepository.findByIdentityCard(updateData.identity_card);
       if (duplicate && duplicate.patient_id !== existing.patient_id) {
         throw new DuplicatePatientError(`Số CCCD/CMND ${updateData.identity_card} đã được sử dụng bởi bệnh nhân khác`);
       }
     }
 
-    const updated = this.patientRepository.update(id, updateData);
+    const updated = await this.patientRepository.update(id, updateData);
     return updated.toJSON();
   }
 
@@ -162,12 +161,12 @@ class PatientService {
    * @returns {Object}
    */
   async remove(id) {
-    const existing = this.patientRepository.findById(id);
+    const existing = await this.patientRepository.findById(id);
     if (!existing) {
       throw new NotFoundError(`Không tìm thấy hồ sơ bệnh nhân để xóa với ID: ${id}`);
     }
 
-    this.patientRepository.delete(id);
+    await this.patientRepository.delete(id);
     return {
       success: true,
       deleted_patient_id: Number(id),

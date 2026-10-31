@@ -1,3 +1,4 @@
+process.env.NODE_ENV = 'test';
 /**
  * Unit Test Suite cho PatientService
  * Chuẩn Jest / Node Test Runner tương thích CommonJS

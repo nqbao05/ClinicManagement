@@ -1,10 +1,4 @@
-let DatabaseModule;
-try {
-  DatabaseModule = require('better-sqlite3');
-} catch (e) {
-  DatabaseModule = null;
-}
-
+const { getDbPool } = require('../config/database');
 const Patient = require('../models/patient.model');
 
 /**
@@ -21,7 +15,7 @@ class GatewayTimeoutError extends Error {
 
 /**
  * In-memory Fallback Database Driver mô phỏng SQLite Driver
- * Kích hoạt khi better-sqlite3 native addon không biên dịch được trên môi trường máy chủ
+ * Kích hoạt khi chạy Unit/Integration Tests hoặc khi MySQL không khả dụng
  */
 class MemoryShardDatabase {
   constructor() {
@@ -120,100 +114,78 @@ class MemoryShardDatabase {
   }
 }
 
-function createNodeDatabase(customDb) {
-  if (customDb) return customDb;
-  if (DatabaseModule) {
-    try {
-      return new DatabaseModule(':memory:');
-    } catch {
-      // Fallback nếu native module bị lỗi tải
-    }
-  }
-  return new MemoryShardDatabase();
-}
-
 /**
  * Repository tương tác dữ liệu Bệnh nhân
- * Hiện thực kiến trúc Database Sharding đa cơ sở (Node Hà Nội & Node TP.HCM)
+ * Hiện thực kiến trúc Database Sharding đa cơ sở (Node Hà Nội: clinic_hanoi & Node TP.HCM: clinic_hcm)
  */
 class PatientRepository {
   /**
    * @param {Object} [options]
-   * @param {Object} [options.db] - DB kết nối mặc định (nếu có)
-   * @param {Object} [options.nodes] - Cấu hình các node phân mảnh
+   * @param {boolean} [options.useMemory]
+   * @param {Object} [options.db]
+   * @param {Object} [options.nodes]
    */
   constructor(options = {}) {
-    // Khởi tạo các Node CSDL phân mảnh (Sharding Nodes)
+    this.useMemory = Boolean(
+      options.useMemory ||
+      process.env.NODE_ENV === 'test' ||
+      options.nodes ||
+      options.db
+    );
+
+    this.simulateTimeout = {
+      1: false,
+      2: false
+    };
+
+    const self = this;
+    const memDb1 = (options.nodes && options.nodes[1]) || (options.db ? options.db : new MemoryShardDatabase());
+    const memDb2 = (options.nodes && options.nodes[2]) || new MemoryShardDatabase();
+
     this.nodes = {
       1: {
         nodeId: 1,
         name: 'Node Hà Nội',
         location: 'Hà Nội',
         ip: '10.0.1.10',
-        db: (options.nodes && options.nodes[1]) || (options.db ? options.db : createNodeDatabase()),
-        simulateTimeout: false
+        db: memDb1,
+        get simulateTimeout() { return self.simulateTimeout[1]; },
+        set simulateTimeout(val) { self.simulateTimeout[1] = Boolean(val); }
       },
       2: {
         nodeId: 2,
         name: 'Node TP.HCM',
         location: 'TP.HCM',
         ip: '10.0.2.10',
-        db: (options.nodes && options.nodes[2]) || createNodeDatabase(),
-        simulateTimeout: false
+        db: memDb2,
+        get simulateTimeout() { return self.simulateTimeout[2]; },
+        set simulateTimeout(val) { self.simulateTimeout[2] = Boolean(val); }
       }
     };
-
-    // Tự động khởi tạo cấu trúc bảng trên toàn bộ các Shard DB Nodes
-    this._initializeTables();
   }
 
   /**
-   * Khởi tạo schema bảng patients theo đúng lược đồ erd.mermaid trên từng Node
-   * @private
+   * Bật/tắt cờ giả lập sự cố kết nối / timeout sang một node cụ thể (Dùng cho test & demo PRD 2.2)
+   * @param {number|string} clinicId 
+   * @param {boolean} isTimeout 
    */
-  _initializeTables() {
-    for (const nodeKey of Object.keys(this.nodes)) {
-      const nodeDb = this.nodes[nodeKey].db;
-      try {
-        nodeDb.exec(`
-          CREATE TABLE IF NOT EXISTS patients (
-            patient_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            origin_clinic_id INTEGER NOT NULL,
-            identity_card TEXT NOT NULL UNIQUE,
-            full_name TEXT NOT NULL,
-            phone_number TEXT NOT NULL,
-            gender TEXT DEFAULT 'Khac',
-            date_of_birth TEXT,
-            address TEXT,
-            blood_type TEXT,
-            medical_history TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-          );
-          CREATE INDEX IF NOT EXISTS idx_patients_identity_card ON patients(identity_card);
-          CREATE INDEX IF NOT EXISTS idx_patients_origin_clinic ON patients(origin_clinic_id);
-        `);
-      } catch (err) {
-        // Đã có bảng hoặc driver memory
-      }
+  setNodeTimeoutSimulation(clinicId, isTimeout = true) {
+    const id = Number(clinicId);
+    if (this.simulateTimeout[id] !== undefined) {
+      this.simulateTimeout[id] = Boolean(isTimeout);
     }
   }
 
   /**
-   * Định tuyến kết nối cơ sở dữ liệu dựa trên khóa phân mảnh origin_clinic_id
+   * Định tuyến kết nối node bộ nhớ
    * @param {number|string} originClinicId
-   * @returns {Object} Đối tượng Node Shard chứa db connection và metadata
+   * @returns {Object}
    */
   getNodeConnection(originClinicId) {
     const clinicId = Number(originClinicId);
-    const node = this.nodes[clinicId];
+    const node = this.nodes[clinicId] || this.nodes[1];
 
-    if (!node) {
-      return this.nodes[1];
-    }
-
-    // Giả lập xử lý timeout / đứt kết nối mạng theo kịch bản PRD 2.2
-    if (node.simulateTimeout) {
+    if (this.simulateTimeout[clinicId]) {
       throw new GatewayTimeoutError(
         `Không thể kết nối đến máy chủ khu vực ${node.name} (${node.ip}), vui lòng thử lại sau`
       );
@@ -223,24 +195,47 @@ class PatientRepository {
   }
 
   /**
-   * Bật/tắt cờ giả lập sự cố kết nối / timeout sang một node cụ thể (Dùng cho test & demo PRD 2.2)
-   * @param {number} clinicId 
-   * @param {boolean} isTimeout 
-   */
-  setNodeTimeoutSimulation(clinicId, isTimeout = true) {
-    if (this.nodes[clinicId]) {
-      this.nodes[clinicId].simulateTimeout = Boolean(isTimeout);
-    }
-  }
-
-  /**
    * Tạo mới hồ sơ bệnh nhân trên đúng Shard Node tương ứng với origin_clinic_id
    * @param {Object} patientData 
-   * @returns {Patient}
+   * @returns {Promise<Patient>}
    */
-  create(patientData) {
-    const targetNode = this.getNodeConnection(patientData.origin_clinic_id);
-    const stmt = targetNode.db.prepare(`
+  async create(patientData) {
+    const clinicId = Number(patientData.origin_clinic_id) || 1;
+    if (this.simulateTimeout[clinicId]) {
+      throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực (Gateway Timeout)`);
+    }
+
+    if (!this.useMemory) {
+      try {
+        const pool = getDbPool(clinicId);
+        const [result] = await pool.query(
+          `INSERT INTO patients (
+            origin_clinic_id, identity_card, full_name, phone_number,
+            gender, date_of_birth, address, blood_type, medical_history
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            clinicId,
+            patientData.identity_card,
+            patientData.full_name,
+            patientData.phone_number,
+            patientData.gender || 'Khac',
+            patientData.date_of_birth || null,
+            patientData.address || null,
+            patientData.blood_type || null,
+            patientData.medical_history || null
+          ]
+        );
+
+        const [rows] = await pool.query('SELECT * FROM patients WHERE patient_id = ?', [result.insertId]);
+        return Patient.fromDatabaseRow(rows[0]);
+      } catch (err) {
+        if (err.name === 'GatewayTimeoutError') throw err;
+        console.warn('[PatientRepository.create] MySQL fallback to memory:', err.message);
+      }
+    }
+
+    const node = this.getNodeConnection(clinicId);
+    const stmt = node.db.prepare(`
       INSERT INTO patients (
         origin_clinic_id, identity_card, full_name, phone_number,
         gender, date_of_birth, address, blood_type, medical_history,
@@ -248,8 +243,8 @@ class PatientRepository {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
 
-    const result = stmt.run(
-      patientData.origin_clinic_id,
+    const res = stmt.run(
+      clinicId,
       patientData.identity_card,
       patientData.full_name,
       patientData.phone_number,
@@ -260,26 +255,60 @@ class PatientRepository {
       patientData.medical_history || null
     );
 
-    const insertedRow = targetNode.db
-      .prepare('SELECT * FROM patients WHERE patient_id = ?')
-      .get(result.lastInsertRowid);
-
-    return Patient.fromDatabaseRow(insertedRow);
+    const row = node.db.prepare('SELECT * FROM patients WHERE patient_id = ?').get(res.lastInsertRowid);
+    return Patient.fromDatabaseRow(row);
   }
 
   /**
    * Lấy danh sách bệnh nhân có hỗ trợ lọc theo origin_clinic_id
    * @param {Object} [filter]
    * @param {number} [filter.origin_clinic_id]
-   * @returns {Array<Patient>}
+   * @returns {Promise<Array<Patient>>}
    */
-  findAll(filter = {}) {
+  async findAll(filter = {}) {
     const results = [];
 
     if (filter.origin_clinic_id) {
-      const targetNode = this.getNodeConnection(filter.origin_clinic_id);
-      const rows = targetNode.db.prepare('SELECT * FROM patients ORDER BY patient_id DESC').all();
+      const clinicId = Number(filter.origin_clinic_id);
+      if (this.simulateTimeout[clinicId]) {
+        throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực (Gateway Timeout)`);
+      }
+
+      if (!this.useMemory) {
+        try {
+          const pool = getDbPool(clinicId);
+          const [rows] = await pool.query('SELECT * FROM patients ORDER BY patient_id DESC');
+          return rows.map((r) => Patient.fromDatabaseRow(r));
+        } catch (err) {
+          if (err.name === 'GatewayTimeoutError') throw err;
+          console.warn('[PatientRepository.findAll] MySQL fallback to memory:', err.message);
+        }
+      }
+
+      const node = this.getNodeConnection(clinicId);
+      const rows = node.db.prepare('SELECT * FROM patients ORDER BY patient_id DESC').all();
       return rows.map((r) => Patient.fromDatabaseRow(r));
+    }
+
+    // Quét toàn bộ 2 Shard Node
+    if (!this.useMemory) {
+      try {
+        if (this.simulateTimeout[1]) {
+          throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node Hà Nội (Gateway Timeout)`);
+        }
+        if (this.simulateTimeout[2]) {
+          throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node TP.HCM (Gateway Timeout)`);
+        }
+
+        const [hanoiRows] = await getDbPool(1).query('SELECT * FROM patients ORDER BY patient_id DESC');
+        const [hcmRows] = await getDbPool(2).query('SELECT * FROM patients ORDER BY patient_id DESC');
+
+        const allRows = [...hanoiRows, ...hcmRows].sort((a, b) => b.patient_id - a.patient_id);
+        return allRows.map((r) => Patient.fromDatabaseRow(r));
+      } catch (err) {
+        if (err.name === 'GatewayTimeoutError') throw err;
+        console.warn('[PatientRepository.findAll] MySQL fallback to memory:', err.message);
+      }
     }
 
     for (const key of Object.keys(this.nodes)) {
@@ -295,15 +324,57 @@ class PatientRepository {
    * Tìm bệnh nhân theo ID
    * @param {number|string} id 
    * @param {number|string} [originClinicId]
-   * @returns {Patient|null}
+   * @returns {Promise<Patient|null>}
    */
-  findById(id, originClinicId = null) {
+  async findById(id, originClinicId = null) {
     const patientId = Number(id);
 
     if (originClinicId) {
-      const targetNode = this.getNodeConnection(originClinicId);
-      const row = targetNode.db.prepare('SELECT * FROM patients WHERE patient_id = ?').get(patientId);
+      const clinicId = Number(originClinicId);
+      if (this.simulateTimeout[clinicId]) {
+        throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực (Gateway Timeout)`);
+      }
+
+      if (!this.useMemory) {
+        try {
+          const pool = getDbPool(clinicId);
+          const [rows] = await pool.query('SELECT * FROM patients WHERE patient_id = ?', [patientId]);
+          return rows[0] ? Patient.fromDatabaseRow(rows[0]) : null;
+        } catch (err) {
+          if (err.name === 'GatewayTimeoutError') throw err;
+          console.warn('[PatientRepository.findById] MySQL fallback to memory:', err.message);
+        }
+      }
+
+      const node = this.getNodeConnection(clinicId);
+      const row = node.db.prepare('SELECT * FROM patients WHERE patient_id = ?').get(patientId);
       return Patient.fromDatabaseRow(row);
+    }
+
+    // Quét tìm qua cả 2 Node
+    if (!this.useMemory) {
+      try {
+        if (this.simulateTimeout[1]) {
+          throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node Hà Nội (Gateway Timeout)`);
+        }
+        const [hanoiRows] = await getDbPool(1).query('SELECT * FROM patients WHERE patient_id = ?', [patientId]);
+        if (hanoiRows.length > 0) {
+          return Patient.fromDatabaseRow(hanoiRows[0]);
+        }
+
+        if (this.simulateTimeout[2]) {
+          throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node TP.HCM (Gateway Timeout)`);
+        }
+        const [hcmRows] = await getDbPool(2).query('SELECT * FROM patients WHERE patient_id = ?', [patientId]);
+        if (hcmRows.length > 0) {
+          return Patient.fromDatabaseRow(hcmRows[0]);
+        }
+
+        return null;
+      } catch (err) {
+        if (err.name === 'GatewayTimeoutError') throw err;
+        console.warn('[PatientRepository.findById] MySQL fallback to memory:', err.message);
+      }
     }
 
     for (const key of Object.keys(this.nodes)) {
@@ -320,10 +391,35 @@ class PatientRepository {
   /**
    * Tìm bệnh nhân theo số CCCD/CMND (Định danh duy nhất)
    * @param {string} identityCard 
-   * @returns {Patient|null}
+   * @returns {Promise<Patient|null>}
    */
-  findByIdentityCard(identityCard) {
+  async findByIdentityCard(identityCard) {
     const cccd = String(identityCard).trim();
+
+    if (!this.useMemory) {
+      try {
+        if (this.simulateTimeout[1]) {
+          throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node Hà Nội (Gateway Timeout)`);
+        }
+        const [hanoiRows] = await getDbPool(1).query('SELECT * FROM patients WHERE identity_card = ?', [cccd]);
+        if (hanoiRows.length > 0) {
+          return Patient.fromDatabaseRow(hanoiRows[0]);
+        }
+
+        if (this.simulateTimeout[2]) {
+          throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node TP.HCM (Gateway Timeout)`);
+        }
+        const [hcmRows] = await getDbPool(2).query('SELECT * FROM patients WHERE identity_card = ?', [cccd]);
+        if (hcmRows.length > 0) {
+          return Patient.fromDatabaseRow(hcmRows[0]);
+        }
+
+        return null;
+      } catch (err) {
+        if (err.name === 'GatewayTimeoutError') throw err;
+        console.warn('[PatientRepository.findByIdentityCard] MySQL fallback to memory:', err.message);
+      }
+    }
 
     for (const key of Object.keys(this.nodes)) {
       const node = this.getNodeConnection(key);
@@ -340,13 +436,16 @@ class PatientRepository {
    * Cập nhật thông tin bệnh nhân
    * @param {number|string} id 
    * @param {Object} updateData 
-   * @returns {Patient|null}
+   * @returns {Promise<Patient|null>}
    */
-  update(id, updateData) {
-    const existing = this.findById(id);
+  async update(id, updateData) {
+    const existing = await this.findById(id);
     if (!existing) return null;
 
-    const targetNode = this.getNodeConnection(existing.origin_clinic_id);
+    const clinicId = existing.origin_clinic_id;
+    if (this.simulateTimeout[clinicId]) {
+      throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực (Gateway Timeout)`);
+    }
 
     const updatedFields = {
       full_name: updateData.full_name !== undefined ? updateData.full_name : existing.full_name,
@@ -358,7 +457,41 @@ class PatientRepository {
       medical_history: updateData.medical_history !== undefined ? updateData.medical_history : existing.medical_history
     };
 
-    targetNode.db.prepare(`
+    if (!this.useMemory) {
+      try {
+        const pool = getDbPool(clinicId);
+        await pool.query(
+          `UPDATE patients SET
+            full_name = ?,
+            phone_number = ?,
+            gender = ?,
+            date_of_birth = ?,
+            address = ?,
+            blood_type = ?,
+            medical_history = ?
+          WHERE patient_id = ?`,
+          [
+            updatedFields.full_name,
+            updatedFields.phone_number,
+            updatedFields.gender,
+            updatedFields.date_of_birth,
+            updatedFields.address,
+            updatedFields.blood_type,
+            updatedFields.medical_history,
+            existing.patient_id
+          ]
+        );
+
+        const [rows] = await pool.query('SELECT * FROM patients WHERE patient_id = ?', [existing.patient_id]);
+        return Patient.fromDatabaseRow(rows[0]);
+      } catch (err) {
+        if (err.name === 'GatewayTimeoutError') throw err;
+        console.warn('[PatientRepository.update] MySQL fallback to memory:', err.message);
+      }
+    }
+
+    const node = this.getNodeConnection(clinicId);
+    node.db.prepare(`
       UPDATE patients SET
         full_name = ?,
         phone_number = ?,
@@ -380,21 +513,37 @@ class PatientRepository {
       existing.patient_id
     );
 
-    const updatedRow = targetNode.db.prepare('SELECT * FROM patients WHERE patient_id = ?').get(existing.patient_id);
+    const updatedRow = node.db.prepare('SELECT * FROM patients WHERE patient_id = ?').get(existing.patient_id);
     return Patient.fromDatabaseRow(updatedRow);
   }
 
   /**
    * Xóa hồ sơ bệnh nhân
    * @param {number|string} id 
-   * @returns {boolean}
+   * @returns {Promise<boolean>}
    */
-  delete(id) {
-    const existing = this.findById(id);
+  async delete(id) {
+    const existing = await this.findById(id);
     if (!existing) return false;
 
-    const targetNode = this.getNodeConnection(existing.origin_clinic_id);
-    const result = targetNode.db.prepare('DELETE FROM patients WHERE patient_id = ?').run(existing.patient_id);
+    const clinicId = existing.origin_clinic_id;
+    if (this.simulateTimeout[clinicId]) {
+      throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực (Gateway Timeout)`);
+    }
+
+    if (!this.useMemory) {
+      try {
+        const pool = getDbPool(clinicId);
+        const [result] = await pool.query('DELETE FROM patients WHERE patient_id = ?', [existing.patient_id]);
+        return result.affectedRows > 0;
+      } catch (err) {
+        if (err.name === 'GatewayTimeoutError') throw err;
+        console.warn('[PatientRepository.delete] MySQL fallback to memory:', err.message);
+      }
+    }
+
+    const node = this.getNodeConnection(clinicId);
+    const result = node.db.prepare('DELETE FROM patients WHERE patient_id = ?').run(existing.patient_id);
     return result.changes > 0;
   }
 }
