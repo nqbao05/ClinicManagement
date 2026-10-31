@@ -22,3 +22,5 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+frontend/.next
+frontend/node_modules
