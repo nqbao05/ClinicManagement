@@ -9,11 +9,14 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "test": "node --test"
+    "test": "node --test",
+    "check:circular": "node scripts/check-circular.js",
+    "db:init": "node src/database/initDb.js",
+    "db:migrate": "node src/database/initDb.js"
   },
   "dependencies": {
-    "better-sqlite3": "^12.4.1",
     "express": "^5.1.0",
+    "mysql2": "^3.24.6",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },

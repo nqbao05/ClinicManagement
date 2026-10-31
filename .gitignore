@@ -1,5 +1,26 @@
+# Dependencies
 node_modules/
+
+# Environment files (Chứa mật khẩu cá nhân, không commit lên git)
+.env
+.env.local
+
+# IDE & Editor files (Thư mục cấu hình cá nhân của WebStorm / VS Code)
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# SQLite Database & Logs
 clinic.sqlite
+*.sqlite
+*.log
+npm-debug.log*
+
+# Test coverage
 coverage/
 frontend/.next
 frontend/node_modules
