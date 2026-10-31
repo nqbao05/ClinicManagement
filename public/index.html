@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý Hồ sơ Bệnh nhân - Distributed Clinic</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: .4; }
+    }
+    .animate-pulse {
+      animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+  <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-7xl space-y-6">
+
+    <!-- Thanh thông báo trạng thái & Công cụ test trực quan -->
+    <div class="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl p-4 shadow-md flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-blue-500/20 text-blue-400 rounded-xl border border-blue-500/30">
+          <i data-lucide="activity" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h2 class="font-bold text-base sm:text-lg flex items-center gap-2">
+            Hệ thống Quản lý Bệnh án Đa cơ sở (Distributed Sharding)
+            <span class="text-xs bg-blue-500/30 text-blue-300 border border-blue-400/30 px-2 py-0.5 rounded-full font-normal">Node Gateway</span>
+          </h2>
+          <p class="text-xs text-slate-300">
+            Hỗ trợ định tuyến CSDL Sharding, kiểm tra Cross-clinic Sync và Fallback UI khi mạng đứt / Timeout 504.
+          </p>
+        </div>
+      </div>
+
+      <!-- Công cụ Test Ngắt Backend -->
+      <div class="flex items-center gap-2 bg-slate-800/80 p-1.5 rounded-xl border border-slate-700">
+        <button id="btn-toggle-backend" onclick="toggleBackendSimulation()" class="px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span id="backend-status-text">Backend: Đang kết nối bình thường</span>
+        </button>
+
+        <button onclick="triggerBackendDisconnectTest()" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow transition-all flex items-center gap-1.5" title="Bấm để kích hoạt kịch bản ngắt kết nối / HTTP 504">
+          <i data-lucide="power-off" class="w-3.5 h-3.5"></i>
+          <span>Thử Ngắt Backend</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Header Trang & Điều chỉnh Chi nhánh hiện tại của Bác sĩ -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-2.5">
+          <i data-lucide="users" class="w-8 h-8 text-blue-600"></i>
+          Danh sách Bệnh nhân
+        </h1>
+        <p class="text-sm text-slate-500 mt-1">
+          Hồ sơ khám bệnh được phân mảnh lưu trữ tại máy chủ từng chi nhánh dựa trên <code class="bg-slate-100 text-blue-700 px-1.5 py-0.5 rounded text-xs font-mono font-semibold">origin_clinic_id</code>.
+        </p>
+      </div>
+
+      <!-- Giả lập Phiên khám của Bác sĩ -->
+      <div class="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-sm">
+        <i data-lucide="stethoscope" class="w-4 h-4 text-emerald-600"></i>
+        <span class="text-xs text-slate-600">Bác sĩ đang ngồi tại:</span>
+        <select id="doctor-clinic-selector" onchange="onDoctorClinicChange(this.value)" class="text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none">
+          <option value="2">Cơ sở TP.HCM (Node 2)</option>
+          <option value="1">Cơ sở Hà Nội (Node 1)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Thanh tìm kiếm & Bộ lọc -->
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-4 bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div class="flex flex-1 flex-col sm:flex-row items-center gap-3">
+        <!-- Input Tìm kiếm -->
+        <div class="relative w-full sm:max-w-md">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"></i>
+          <input
+            id="search-input"
+            type="text"
+            placeholder="Tìm theo họ tên hoặc số CCCD/CMND..."
+            oninput="handleSearch(this.value)"
+            class="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+          />
+        </div>
+
+        <!-- Dropdown Lọc Cơ sở -->
+        <div class="w-full sm:w-56">
+          <select id="clinic-filter" onchange="handleClinicFilter(this.value)" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="ALL">Tất cả chi nhánh</option>
+            <option value="1">Cơ sở 1 - Hà Nội (Node 1)</option>
+            <option value="2">Cơ sở 2 - TP.HCM (Node 2)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="fetchPatients()" class="px-3.5 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-lg shadow-sm flex items-center gap-1.5 transition-all">
+          <i data-lucide="refresh-cw" id="icon-refresh" class="w-4 h-4 text-slate-500"></i>
+          <span>Làm mới</span>
+        </button>
+
+        <button onclick="openCreateModal()" class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm flex items-center gap-1.5 transition-all">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Thêm bệnh nhân</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- KHU VỰC BẢNG DỮ LIỆU CHÍNH (XỬ LÝ 3 TRẠNG THÁI MẠNG) -->
+    <div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-700">
+          <thead class="bg-slate-50 border-b border-slate-200 text-xs uppercase text-slate-500 tracking-wider">
+            <tr>
+              <th class="px-4 py-3.5 font-semibold w-20">Mã BN</th>
+              <th class="px-4 py-3.5 font-semibold">Họ và tên</th>
+              <th class="px-4 py-3.5 font-semibold">Số CCCD / CMND</th>
+              <th class="px-4 py-3.5 font-semibold">Số điện thoại</th>
+              <th class="px-4 py-3.5 font-semibold">Giới tính</th>
+              <th class="px-4 py-3.5 font-semibold">Cơ sở lưu trữ gốc (Shard)</th>
+              <th class="px-4 py-3.5 font-semibold text-right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- Nội dung sẽ được render động theo 3 trạng thái mạng -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer bảng thống kê -->
+      <div id="table-footer" class="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+        <span>Tổng cộng: <strong id="total-count" class="text-slate-800">0</strong> hồ sơ bệnh nhân</span>
+        <span class="italic">Cơ chế định tuyến phân tán (Sharding Gateway) tự động bảo vệ dữ liệu</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL THÊM BỆNH NHÂN (CREATE PATIENT DIALOG) -->
+  <div id="create-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full max-h-[90vh] overflow-y-auto transform transition-all p-6 space-y-5">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-2.5">
+          <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+            <i data-lucide="user-plus" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Thêm Bệnh nhân Mới</h3>
+            <p class="text-xs text-slate-500">Lưu trữ trực tiếp vào Node CSDL tương ứng với chi nhánh</p>
+          </div>
+        </div>
+        <button onclick="closeCreateModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="modal-error" class="hidden p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+        <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+        <span id="modal-error-text"></span>
+      </div>
+
+      <form id="create-form" onsubmit="handleCreateSubmit(event)" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Cơ sở đăng ký gốc (Shard Key) <span class="text-red-500">*</span></label>
+            <select name="origin_clinic_id" required class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="1">Cơ sở 1 - Hà Nội (Node 1)</option>
+              <option value="2">Cơ sở 2 - TP.HCM (Node 2)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Số CCCD / CMND <span class="text-red-500">*</span></label>
+            <input name="identity_card" required maxlength="12" placeholder="001201012345" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Họ và tên <span class="text-red-500">*</span></label>
+            <input name="full_name" required placeholder="Nguyễn Văn P" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Số điện thoại <span class="text-red-500">*</span></label>
+            <input name="phone_number" required placeholder="0901234567" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Giới tính</label>
+            <select name="gender" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="Nam">Nam</option>
+              <option value="Nu">Nữ</option>
+              <option value="Khac">Khác</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Ngày sinh</label>
+            <input name="date_of_birth" type="date" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Nhóm máu</label>
+            <select name="blood_type" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+              <option value="O+">O+</option>
+              <option value="A+">A+</option>
+              <option value="B+">B+</option>
+              <option value="AB+">AB+</option>
+              <option value="O-">O-</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Địa chỉ thường trú</label>
+          <input name="address" placeholder="Hoàn Kiếm, Hà Nội hoặc Quận 1, TP.HCM" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Tiền sử bệnh án</label>
+          <textarea name="medical_history" rows="2" placeholder="Dị ứng kháng sinh, tiền sử tim mạch..." class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeCreateModal()" class="px-4 py-2 text-sm text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium">Hủy bỏ</button>
+          <button type="submit" id="btn-submit-modal" class="px-5 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold shadow flex items-center gap-2">
+            <span>Lưu hồ sơ bệnh nhân</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // State của ứng dụng Frontend
+    let rawPatients = [];
+    let currentSearch = '';
+    let currentClinicFilter = 'ALL';
+    let currentDoctorClinicId = 2; // Mặc định bác sĩ đang tại TP.HCM (Node 2)
+    let isSimulateBackendDown = false; // Cờ mô phỏng ngắt kết nối để test Fallback UI
+
+    // Khởi tạo icon Lucide
+    function refreshIcons() {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    // Toggle cờ mô phỏng ngắt backend
+    function toggleBackendSimulation() {
+      isSimulateBackendDown = !isSimulateBackendDown;
+      const statusText = document.getElementById('backend-status-text');
+      const btn = document.getElementById('btn-toggle-backend');
+
+      if (isSimulateBackendDown) {
+        statusText.innerText = 'Backend: ĐANG GIẢ LẬP MẤT KẾT NỐI (504/Down)';
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30';
+      } else {
+        statusText.innerText = 'Backend: Đang kết nối bình thường';
+        btn.className = 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30';
+      }
+      fetchPatients();
+    }
+
+    // Nút tắt/bật nhanh kịch bản ngắt backend để test Fallback UI màu đỏ
+    function triggerBackendDisconnectTest() {
+      if (!isSimulateBackendDown) {
+        toggleBackendSimulation();
+      } else {
+        fetchPatients();
+      }
+    }
+
+    function onDoctorClinicChange(val) {
+      currentDoctorClinicId = Number(val);
+      fetchPatients();
+    }
+
+    function handleSearch(val) {
+      currentSearch = val.toLowerCase().trim();
+      renderFilteredPatients();
+    }
+
+    function handleClinicFilter(val) {
+      currentClinicFilter = val;
+      fetchPatients();
+    }
+
+    // =========================================================================
+    // TRẠNG THÁI 1: RENDER SKELETON LOADING (Chống giật layout)
+    // =========================================================================
+    function renderLoadingSkeleton() {
+      const tbody = document.getElementById('table-body');
+      let html = '';
+      for (let i = 0; i < 5; i++) {
+        html += `
+          <tr class="animate-pulse border-b border-slate-100">
+            <td class="px-4 py-4"><div class="h-4 w-10 bg-slate-200 rounded"></div></td>
+            <td class="px-4 py-4">
+              <div class="h-4 w-36 bg-slate-200 rounded mb-1.5"></div>
+              <div class="h-3 w-20 bg-slate-100 rounded"></div>
+            </td>
+            <td class="px-4 py-4"><div class="h-4 w-28 bg-slate-200 rounded"></div></td>
+            <td class="px-4 py-4"><div class="h-4 w-24 bg-slate-200 rounded"></div></td>
+            <td class="px-4 py-4"><div class="h-4 w-12 bg-slate-200 rounded"></div></td>
+            <td class="px-4 py-4"><div class="h-6 w-32 bg-slate-200 rounded-full"></div></td>
+            <td class="px-4 py-4 text-right"><div class="h-8 w-16 bg-slate-200 rounded-lg ml-auto"></div></td>
+          </tr>
+        `;
+      }
+      tbody.innerHTML = html;
+      document.getElementById('icon-refresh').classList.add('animate-spin');
+    }
+
+    // =========================================================================
+    // TRẠNG THÁI 2: RENDER FALLBACK UI MÀU ĐỎ (KHI MẤT KẾT NỐI HOẶC 504 TIMEOUT)
+    // =========================================================================
+    function renderErrorFallback(errorMessage) {
+      const tbody = document.getElementById('table-body');
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="p-8 text-center">
+            <div class="max-w-xl mx-auto bg-red-50 border-2 border-red-300 rounded-2xl p-8 shadow-sm text-center space-y-4">
+              <div class="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto ring-8 ring-red-50">
+                <i data-lucide="wifi-off" class="w-8 h-8 animate-bounce"></i>
+              </div>
+              <div class="space-y-1.5">
+                <h3 class="text-lg font-bold text-red-800 flex items-center justify-center gap-2">
+                  <i data-lucide="alert-triangle" class="w-5 h-5 text-red-600"></i>
+                  Sự cố kết nối máy chủ phân tán (HTTP 504 Gateway Timeout)
+                </h3>
+                <p class="text-sm text-red-600 max-w-md mx-auto">
+                  ${errorMessage || 'Không thể kết nối đến máy chủ khu vực chi nhánh hoặc Backend đã bị ngắt. Vui lòng kiểm tra lại dịch vụ mạng.'}
+                </p>
+              </div>
+              <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <button onclick="fetchPatients()" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2">
+                  <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                  <span>Thử kết nối lại ngay</span>
+                </button>
+                ${isSimulateBackendDown ? `
+                  <button onclick="toggleBackendSimulation()" class="px-4 py-2.5 bg-white border border-red-300 hover:bg-red-50 text-red-700 font-semibold text-sm rounded-xl transition-all">
+                    Tắt chế độ giả lập ngắt
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+          </td>
+        </tr>
+      `;
+      document.getElementById('icon-refresh').classList.remove('animate-spin');
+      refreshIcons();
+    }
+
+    // =========================================================================
+    // TRẠNG THÁI 3: RENDER DANH SÁCH BỆNH NHÂN (SUCCESS & EMPTY STATE)
+    // =========================================================================
+    function renderFilteredPatients() {
+      const tbody = document.getElementById('table-body');
+      let filtered = rawPatients;
+
+      if (currentSearch) {
+        filtered = filtered.filter(p =>
+          (p.full_name && p.full_name.toLowerCase().includes(currentSearch)) ||
+          (p.identity_card && p.identity_card.includes(currentSearch)) ||
+          (p.phone_number && p.phone_number.includes(currentSearch))
+        );
+      }
+
+      document.getElementById('total-count').innerText = filtered.length;
+      document.getElementById('icon-refresh').classList.remove('animate-spin');
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="p-12 text-center">
+              <div class="flex flex-col items-center justify-center space-y-3 text-slate-400">
+                <div class="p-4 bg-slate-100 rounded-full">
+                  <i data-lucide="user-x" class="w-8 h-8 text-slate-400"></i>
+                </div>
+                <div class="space-y-1">
+                  <p class="font-bold text-slate-700 text-base">Chưa có hồ sơ bệnh nhân nào</p>
+                  <p class="text-xs text-slate-500">Chưa tìm thấy bệnh nhân phù hợp hoặc cơ sở dữ liệu đang trống.</p>
+                </div>
+                <div class="flex items-center gap-2 pt-2">
+                  <button onclick="seedSamplePatients()" class="px-3.5 py-2 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded-lg text-xs font-semibold">
+                    + Tạo nhanh 2 bệnh nhân mẫu (Hà Nội & TP.HCM)
+                  </button>
+                  <button onclick="openCreateModal()" class="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700">
+                    Thêm thủ công
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>
+        `;
+        refreshIcons();
+        return;
+      }
+
+      let rowsHtml = '';
+      filtered.forEach(p => {
+        const isHanoi = p.origin_clinic_id === 1;
+        const clinicName = isHanoi ? 'Cơ sở 1 - Hà Nội' : 'Cơ sở 2 - TP.HCM';
+        const clinicBadgeColor = isHanoi
+          ? 'bg-blue-50 text-blue-700 border-blue-200'
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+        // Cờ cảnh báo Cross-clinic (Theo Kịch bản PRD 2.1)
+        const isExternal = p.is_external_record || (p.origin_clinic_id !== currentDoctorClinicId);
+
+        rowsHtml += `
+          <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
+            <td class="px-4 py-3.5 font-mono text-xs font-bold text-slate-500">#${p.patient_id}</td>
+            <td class="px-4 py-3.5">
+              <div class="font-bold text-slate-900">${p.full_name}</div>
+              ${p.medical_history ? `<div class="text-[11px] text-slate-500 truncate max-w-xs">${p.medical_history}</div>` : ''}
+            </td>
+            <td class="px-4 py-3.5 font-mono font-medium text-slate-700 tracking-wider">${p.identity_card}</td>
+            <td class="px-4 py-3.5 text-slate-600">${p.phone_number}</td>
+            <td class="px-4 py-3.5">
+              <span class="inline-block px-2 py-0.5 rounded text-xs ${p.gender === 'Nam' ? 'bg-indigo-50 text-indigo-700' : 'bg-pink-50 text-pink-700'}">
+                ${p.gender === 'Nam' ? 'Nam' : p.gender === 'Nu' ? 'Nữ' : 'Khác'}
+              </span>
+            </td>
+            <td class="px-4 py-3.5">
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-1.5">
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${clinicBadgeColor}">
+                  <i data-lucide="building-2" class="w-3 h-3"></i>
+                  ${clinicName}
+                </span>
+
+                ${isExternal ? `
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse" title="Hồ sơ gốc lưu tại cơ sở khác, được tự động đồng bộ xuyên Node">
+                    <i data-lucide="share-2" class="w-3 h-3 text-amber-600"></i>
+                    Hồ sơ ngoài cơ sở
+                  </span>
+                ` : ''}
+              </div>
+            </td>
+            <td class="px-4 py-3.5 text-right">
+              <div class="flex items-center justify-end gap-1">
+                <button onclick="viewDetail(${p.patient_id})" class="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Xem chi tiết">
+                  <i data-lucide="eye" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = rowsHtml;
+      refreshIcons();
+    }
+
+    // =========================================================================
+    // HÀM GỌI API BACKEND: GET /api/patients
+    // =========================================================================
+    async function fetchPatients() {
+      renderLoadingSkeleton();
+
+      // Giả lập độ trễ mạng thực tế 350ms để thấy rõ hiệu ứng Skeleton Loading
+      await new Promise(r => setTimeout(r, 350));
+
+      // KỊCH BẢN TEST: Nếu cờ ngắt backend bật -> Ném lỗi trực tiếp để kích hoạt Fallback UI đỏ
+      if (isSimulateBackendDown) {
+        renderErrorFallback("Máy chủ khu vực Hà Nội không phản hồi (504 Gateway Timeout theo Kịch bản PRD 2.2). Kết nối đã bị ngắt an toàn bởi Circuit Breaker.");
+        return;
+      }
+
+      try {
+        let url = '/api/patients';
+        if (currentClinicFilter !== 'ALL') {
+          url += `?origin_clinic_id=${currentClinicFilter}`;
+        }
+
+        const res = await fetch(url, {
+          headers: {
+            // Header gửi mã chi nhánh của bác sĩ để Backend tự đánh dấu cờ is_external_record
+            'X-Clinic-ID': String(currentDoctorClinicId)
+          }
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || `Lỗi máy chủ: HTTP ${res.status}`);
+        }
+
+        rawPatients = await res.json();
+        renderFilteredPatients();
+      } catch (err) {
+        // Bắt lỗi khi backend tắt thật (ERR_CONNECTION_REFUSED) hoặc lỗi mạng
+        renderErrorFallback("Không thể kết nối đến máy chủ Backend (http://localhost:3000). Máy chủ có thể đã bị ngắt hoặc dừng tiến trình.");
+      }
+    }
+
+    // Modal Handlers
+    function openCreateModal() {
+      document.getElementById('create-modal').classList.remove('hidden');
+      document.getElementById('modal-error').classList.add('hidden');
+    }
+
+    function closeCreateModal() {
+      document.getElementById('create-modal').classList.add('hidden');
+    }
+
+    async function handleCreateSubmit(e) {
+      e.preventDefault();
+      const form = e.target;
+      const btn = document.getElementById('btn-submit-modal');
+      const errBox = document.getElementById('modal-error');
+      const errText = document.getElementById('modal-error-text');
+
+      const formData = new FormData(form);
+      const payload = {
+        origin_clinic_id: Number(formData.get('origin_clinic_id')),
+        identity_card: formData.get('identity_card'),
+        full_name: formData.get('full_name'),
+        phone_number: formData.get('phone_number'),
+        gender: formData.get('gender'),
+        date_of_birth: formData.get('date_of_birth') || null,
+        blood_type: formData.get('blood_type') || null,
+        address: formData.get('address') || null,
+        medical_history: formData.get('medical_history') || null
+      };
+
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Đang lưu vào Node...`;
+      refreshIcons();
+
+      try {
+        const res = await fetch('/api/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.message || (data.details && data.details[0]) || 'Lỗi khi tạo bệnh nhân');
+        }
+
+        form.reset();
+        closeCreateModal();
+        fetchPatients();
+      } catch (err) {
+        errBox.classList.remove('hidden');
+        errText.innerText = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `Lưu hồ sơ bệnh nhân`;
+      }
+    }
+
+    // Seed mẫu 2 bệnh nhân nhanh
+    async function seedSamplePatients() {
+      try {
+        await fetch('/api/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            origin_clinic_id: 1,
+            identity_card: '001201012345',
+            full_name: 'Nguyễn Văn P (BN102 - Hà Nội)',
+            phone_number: '0901234567',
+            gender: 'Nam',
+            blood_type: 'O+',
+            medical_history: 'Tiền sử dị ứng penicillin (PRD Luồng 2)'
+          })
+        });
+
+        await fetch('/api/patients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            origin_clinic_id: 2,
+            identity_card: '079201019999',
+            full_name: 'Trần Thị Mai (TP.HCM)',
+            phone_number: '0988888888',
+            gender: 'Nu',
+            blood_type: 'A+',
+            medical_history: 'Khám định kỳ tổng quát'
+          })
+        });
+
+        fetchPatients();
+      } catch (e) {
+        alert('Không thể tạo dữ liệu mẫu: ' + e.message);
+      }
+    }
+
+    function viewDetail(id) {
+      const p = rawPatients.find(x => x.patient_id === id);
+      if (!p) return;
+      const isExternal = p.origin_clinic_id !== currentDoctorClinicId;
+      alert(`[CHI TIẾT BỆNH ÁN]\n\n` +
+        `• Mã BN: #${p.patient_id}\n` +
+        `• Họ và tên: ${p.full_name}\n` +
+        `• Số CCCD: ${p.identity_card}\n` +
+        `• Chi nhánh gốc: ${p.origin_clinic_id === 1 ? 'Hà Nội' : 'TP.HCM'}\n` +
+        `• Trạng thái hồ sơ: ${isExternal ? '⚠️ ĐỒNG BỘ TỪ CHI NHÁNH KHÁC (Cross-node Sync)' : 'Hồ sơ nội bộ cơ sở'}\n` +
+        `• Tiền sử: ${p.medical_history || 'Không có'}`
+      );
+    }
+
+    // Khởi chạy khi load trang
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshIcons();
+      fetchPatients();
+    });
+  </script>
+</body>
+</html>

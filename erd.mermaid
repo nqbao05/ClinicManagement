@@ -5,22 +5,29 @@ erDiagram
         string location
         string db_node_ip
     }
-    
+
     DOCTOR {
         int doctor_id PK
         int clinic_id FK
         string full_name
         string specialty
     }
-    
+
     PATIENT {
         int patient_id PK
         int origin_clinic_id FK "Sharding Key: Node CSDL gốc"
+        string identity_card "Số CCCD/CMND"
         string full_name
         string phone_number
-        string medical_history
+        string gender "Nam, Nu, Khac"
+        date date_of_birth
+        string address
+        string blood_type
+        string medical_history "Tien su benh an"
+        datetime created_at
+        datetime updated_at
     }
-    
+
     APPOINTMENT {
         int appointment_id PK
         int patient_id FK
