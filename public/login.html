@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Đăng Nhập Hệ Thống - Clinic Management Portal</title>
+
+  <!-- Tailwind CSS CDN (Đồng bộ với public/index.html của TV2, TV3, TV4) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col justify-between selection:bg-blue-500 selection:text-white relative overflow-x-hidden">
+
+  <!-- ================= VIBRANT MEDICAL BACKGROUND GRADIENT AURA ================= -->
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+    <!-- Lưới họa tiết Grid tinh tế chuẩn y tế công nghệ cao -->
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,#8080800f_1px,transparent_1px),linear-gradient(to_bottom,#8080800f_1px,transparent_1px)] bg-[size:28px_28px]"></div>
+
+    <!-- Dải sáng phát quang Cyan / Sky góc trên bên trái -->
+    <div class="aura-cyan absolute -top-32 -left-32 w-[450px] h-[450px] bg-gradient-to-tr from-cyan-400 via-sky-500 to-blue-600 rounded-full blur-[110px] opacity-25"></div>
+
+    <!-- Dải sáng phát quang Purple / Indigo góc trên bên phải -->
+    <div class="aura-purple absolute top-12 -right-32 w-[420px] h-[420px] bg-gradient-to-bl from-purple-500 via-indigo-500 to-pink-500 rounded-full blur-[110px] opacity-20"></div>
+
+    <!-- Dải sáng phát quang Emerald góc dưới bên trái -->
+    <div class="aura-emerald absolute -bottom-32 left-10 w-[400px] h-[400px] bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-500 rounded-full blur-[110px] opacity-20"></div>
+  </div>
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header class="relative z-10 w-full border-b border-slate-200/80 bg-white/70 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="p-2 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-xl shadow-md shadow-blue-500/20">
+          <i data-lucide="activity" class="w-5 h-5 stroke-[2.5]"></i>
+        </div>
+        <div>
+          <span class="font-extrabold text-lg tracking-tight text-slate-900">
+            Clinic<span class="text-blue-600">Care</span>
+          </span>
+          <span class="ml-1.5 text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 px-2 py-0.5 rounded-md">
+            Distributed System
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3 text-xs text-slate-600">
+        <span class="hidden sm:inline-flex items-center gap-1 text-slate-500">
+          <i data-lucide="network" class="w-3.5 h-3.5 text-blue-500"></i>
+          Hệ thống đa cơ sở: Node Hà Nội & Node TP.HCM
+        </span>
+        <a href="/patients-ui" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 font-medium text-slate-700 transition">
+          <i data-lucide="layout-grid" class="w-3.5 h-3.5 text-slate-500"></i>
+          Giao diện Bệnh án
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= MAIN CONTENT (CENTERED LOGIN CARD) ================= -->
+  <main class="relative z-10 flex-1 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 my-auto">
+    <div class="w-full max-w-md mx-auto">
+
+      <!-- Badge Tiêu đề Thương hiệu -->
+      <div class="mb-5 text-center">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/80 border border-slate-200/80 shadow-sm backdrop-blur-md mb-2 text-xs font-semibold text-slate-700">
+          <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+          <span>Phân hệ 1 • Xác thực & Phân quyền RBAC</span>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Cổng Đăng Nhập Y Tế
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-500 mt-1">
+          Hệ thống Quản lý Y tế Đa cơ sở (Distributed Clinic Portal)
+        </p>
+      </div>
+
+      <!-- Khung Card Đăng nhập Sang trọng -->
+      <div class="login-card bg-white/95 rounded-2xl border border-slate-200/80 overflow-hidden" id="loginCard">
+
+        <!-- Line Gradient trang trí trên đầu Card -->
+        <div class="h-1.5 w-full bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600"></div>
+
+        <div class="p-6 sm:p-8 space-y-5">
+
+          <!-- Biểu tượng Header Card -->
+          <div class="flex items-center justify-center">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-50 to-indigo-100 text-blue-600 border border-blue-200/50 shadow-inner flex items-center justify-center">
+              <i data-lucide="shield-check" class="w-7 h-7 stroke-[2.2]"></i>
+            </div>
+          </div>
+
+          <div class="text-center">
+            <h2 class="text-xl font-bold text-slate-900">Xác thực tài khoản</h2>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Vui lòng nhập định danh để phân quyền truy cập chi nhánh
+            </p>
+          </div>
+
+          <!-- ================= ALERT BANNER (HIỂN THỊ THÔNG BÁO) ================= -->
+          <div id="alertBanner" class="alert-banner alert-hidden items-start gap-3 p-3.5 rounded-xl border text-xs sm:text-sm" role="alert">
+            <div id="alertIcon" class="mt-0.5 flex-shrink-0">
+              <i data-lucide="alert-circle" class="w-5 h-5"></i>
+            </div>
+            <div class="flex-1">
+              <h4 id="alertTitle" class="font-bold">Đăng nhập thất bại</h4>
+              <p id="alertMessage" class="mt-0.5 text-xs leading-relaxed text-slate-600">Thông báo lỗi chi tiết</p>
+            </div>
+          </div>
+
+          <!-- ================= FORM ĐĂNG NHẬP ================= -->
+          <form id="loginForm" class="space-y-4" novalidate>
+
+            <!-- Trường Email / Username -->
+            <div class="space-y-1.5">
+              <label for="usernameInput" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Email / Tên đăng nhập <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="mail" class="w-4 h-4"></i>
+                </div>
+                <input
+                  type="text"
+                  id="usernameInput"
+                  name="username"
+                  autocomplete="username"
+                  placeholder="bacsi.nguyenvana@clinic.vn"
+                  class="form-input w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 text-slate-900 placeholder:text-slate-400"
+                  required
+                />
+              </div>
+              <p id="usernameError" class="hidden text-xs font-medium text-red-600 pl-1"></p>
+            </div>
+
+            <!-- Trường Mật khẩu -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label for="passwordInput" class="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                  Mật khẩu <span class="text-red-500">*</span>
+                </label>
+                <a href="javascript:void(0)" onclick="handleForgotPassword()" class="text-xs text-blue-600 hover:text-blue-700 font-semibold hover:underline">
+                  Quên mật khẩu?
+                </a>
+              </div>
+              <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="lock" class="w-4 h-4"></i>
+                </div>
+                <input
+                  type="password"
+                  id="passwordInput"
+                  name="password"
+                  autocomplete="current-password"
+                  placeholder="••••••••"
+                  class="form-input w-full pl-10 pr-11 py-2.5 rounded-xl border border-slate-200 text-sm bg-slate-50/50 text-slate-900 placeholder:text-slate-400"
+                  required
+                />
+                <button
+                  type="button"
+                  id="togglePasswordBtn"
+                  aria-label="Ẩn hoặc hiện mật khẩu"
+                  class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition"
+                >
+                  <i data-lucide="eye" id="eyeIcon" class="w-4 h-4"></i>
+                </button>
+              </div>
+              <p id="passwordError" class="hidden text-xs font-medium text-red-600 pl-1"></p>
+            </div>
+
+            <!-- Ghi nhớ phiên & Điều khoản -->
+            <div class="flex items-center justify-between text-xs text-slate-600 pt-1">
+              <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="rememberMe" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5">
+                <span>Ghi nhớ phiên đăng nhập</span>
+              </label>
+              <span class="text-slate-400">Hết hạn: 15 phút</span>
+            </div>
+
+            <!-- Nút Submit Đăng Nhập -->
+            <button
+              type="submit"
+              id="submitBtn"
+              class="btn-submit w-full mt-2 py-3 px-4 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 hover:from-blue-700 hover:via-indigo-700 hover:to-cyan-700 shadow-md flex items-center justify-center gap-2"
+            >
+              <i data-lucide="log-in" id="btnIcon" class="w-4 h-4"></i>
+              <span id="btnText">Đăng Nhập</span>
+              <span id="btnSpinner" class="spinner w-4 h-4 hidden"></span>
+            </button>
+          </form>
+
+          <!-- ================= TÀI KHOẢN MẪU ĐỂ TEST NHANH (DEMO ACCOUNTS) ================= -->
+          <div class="pt-3 border-t border-slate-100">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                Tài khoản mẫu thử nghiệm (Click để điền nhanh)
+              </span>
+              <span class="text-[10px] text-blue-600 font-semibold bg-blue-50 px-1.5 py-0.5 rounded">3 Roles</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onclick="fillCredentials('bacsi.nguyenvana@clinic.vn', 'DoctorSecret@2026')"
+                class="demo-pill flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-50 text-center"
+              >
+                <span class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <i data-lucide="stethoscope" class="w-3.5 h-3.5 text-blue-600"></i> Bác Sĩ
+                </span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Node Hà Nội</span>
+              </button>
+
+              <button
+                type="button"
+                onclick="fillCredentials('admin@clinic.vn', 'AdminSecret@2026')"
+                class="demo-pill flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-50 text-center"
+              >
+                <span class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <i data-lucide="shield" class="w-3.5 h-3.5 text-indigo-600"></i> Admin
+                </span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Toàn quyền</span>
+              </button>
+
+              <button
+                type="button"
+                onclick="fillCredentials('benhnhan@clinic.vn', 'PatientSecret@2026')"
+                class="demo-pill flex flex-col items-center justify-center p-2 rounded-lg border border-slate-200 bg-slate-50 text-center"
+              >
+                <span class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <i data-lucide="user" class="w-3.5 h-3.5 text-emerald-600"></i> Bệnh Nhân
+                </span>
+                <span class="text-[10px] text-slate-500 mt-0.5">Node TP.HCM</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Footer Card -->
+        <div class="px-6 py-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+          <span class="flex items-center gap-1.5">
+            <i data-lucide="lock" class="w-3 h-3 text-emerald-600"></i>
+            Mã hóa mật khẩu: Argon2id/Bcrypt
+          </span>
+          <span class="text-slate-400">JWT Stateless</span>
+        </div>
+      </div>
+
+      <!-- Trust Badges bên dưới Card -->
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500 select-none">
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+          Định tuyến Shard Key tự động
+        </span>
+        <span class="text-slate-300">•</span>
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-blue-600"></i>
+          Tự động khóa sau 5 lần sai
+        </span>
+        <span class="text-slate-300">•</span>
+        <span class="flex items-center gap-1.5">
+          <i data-lucide="clock" class="w-3.5 h-3.5 text-slate-400"></i>
+          Idle Timeout 15m
+        </span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ================= FOOTER ================= -->
+  <footer class="relative z-10 w-full py-4 text-center text-xs text-slate-400 border-t border-slate-200/60 bg-white/50 backdrop-blur-sm">
+    <p>© 2026 Distributed Clinic Management System • Phân hệ Xác thực & Bảo mật TV1</p>
+  </footer>
+
+  <!-- Script Khởi tạo Lucide Icons & Logic Đăng Nhập -->
+  <script src="/js/login.js"></script>
+</body>
+</html>
+

@@ -65,14 +65,22 @@
         </p>
       </div>
 
-      <!-- Giả lập Phiên khám của Bác sĩ -->
-      <div class="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-sm">
-        <i data-lucide="stethoscope" class="w-4 h-4 text-emerald-600"></i>
-        <span class="text-xs text-slate-600">Bác sĩ đang ngồi tại:</span>
-        <select id="doctor-clinic-selector" onchange="onDoctorClinicChange(this.value)" class="text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none">
-          <option value="2">Cơ sở TP.HCM (Node 2)</option>
-          <option value="1">Cơ sở Hà Nội (Node 1)</option>
-        </select>
+      <!-- Khối Thông tin Người dùng, Chi nhánh & Nút Đăng Xuất (TV1) -->
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Giả lập Phiên khám của Bác sĩ -->
+        <div class="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-sm">
+          <i data-lucide="stethoscope" class="w-4 h-4 text-emerald-600"></i>
+          <span class="text-xs text-slate-600">Bác sĩ đang ngồi tại:</span>
+          <select id="doctor-clinic-selector" onchange="onDoctorClinicChange(this.value)" class="text-xs font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-md px-2 py-1 focus:ring-2 focus:ring-blue-500 outline-none">
+            <option value="2">Cơ sở TP.HCM (Node 2)</option>
+            <option value="1">Cơ sở Hà Nội (Node 1)</option>
+          </select>
+        </div>
+
+        <!-- Widget Người dùng & Đăng xuất -->
+        <div id="user-auth-widget" class="flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+          <!-- Render động từ renderUserAuthWidget() -->
+        </div>
       </div>
     </div>
 
@@ -614,10 +622,82 @@
       );
     }
 
+    // Cập nhật thông tin tài khoản đăng nhập & Nút Đăng xuất (TV1)
+    function renderUserAuthWidget() {
+      const widget = document.getElementById('user-auth-widget');
+      if (!widget) return;
+
+      const userSessionRaw = localStorage.getItem('userSession');
+      const token = localStorage.getItem('accessToken');
+
+      if (!token || !userSessionRaw) {
+        widget.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+            <span class="text-xs text-slate-500">Chưa đăng nhập</span>
+            <a href="/login" class="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow transition">
+              <i data-lucide="log-in" class="w-3.5 h-3.5"></i>
+              <span>Đăng Nhập</span>
+            </a>
+          </div>
+        `;
+        refreshIcons();
+        return;
+      }
+
+      let user = {};
+      try { user = JSON.parse(userSessionRaw); } catch(e) {}
+
+      let roleLabel = 'Bác Sĩ';
+      let roleBadgeClass = 'bg-blue-100 text-blue-700 border-blue-200';
+      if (user.roleId === 'ROLE_ADMIN') {
+        roleLabel = 'Quản Trị Viên';
+        roleBadgeClass = 'bg-purple-100 text-purple-700 border-purple-200';
+      } else if (user.roleId === 'ROLE_PATIENT') {
+        roleLabel = 'Bệnh Nhân';
+        roleBadgeClass = 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      }
+
+      widget.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs border border-blue-200">
+              <i data-lucide="user" class="w-4 h-4"></i>
+            </div>
+            <div class="text-left hidden sm:block">
+              <div class="text-xs font-bold text-slate-800 leading-tight">${user.username || 'Người dùng'}</div>
+              <div class="text-[10px] text-slate-500 leading-tight">${user.branchId || 'Phòng khám'}</div>
+            </div>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${roleBadgeClass}">
+              ${roleLabel}
+            </span>
+          </div>
+
+          <button onclick="handleLogout()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition shadow-sm" title="Đăng xuất để đổi tài khoản khác">
+            <i data-lucide="log-out" class="w-3.5 h-3.5 text-red-600"></i>
+            <span>Đăng Xuất</span>
+          </button>
+        </div>
+      `;
+      refreshIcons();
+    }
+
+    function handleLogout() {
+      if (confirm('Bạn có chắc chắn muốn đăng xuất khỏi tài khoản này để đăng nhập tài khoản khác?')) {
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('userSession');
+        localStorage.removeItem('currentBranchId');
+        localStorage.removeItem('userRole');
+        fetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => {});
+        window.location.href = '/login?logout=success';
+      }
+    }
+
     // Khởi chạy khi load trang
     window.addEventListener('DOMContentLoaded', () => {
       refreshIcons();
       fetchPatients();
+      renderUserAuthWidget();
     });
   </script>
 </body>

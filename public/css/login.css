@@ -1,0 +1,165 @@
+/**
+ * Clinic Management Portal - Authentication Stylesheet
+ * File: public/css/login.css
+ * Thành viên 1: Phân hệ Xác thực & Cổng Đăng nhập
+ */
+
+/* ================== ANIMATIONS & KEYFRAMES ================== */
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-12px) scale(1.02);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ================== CARD LOGIN STYLING ================== */
+.login-card {
+  animation: fadeInScale 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  box-shadow: 0 20px 45px -10px rgba(15, 23, 42, 0.12),
+              0 10px 20px -5px rgba(59, 130, 246, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.login-card:hover {
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.16),
+              0 12px 24px -6px rgba(59, 130, 246, 0.12);
+}
+
+.shake-animation {
+  animation: shakeError 0.4s ease-in-out;
+}
+
+/* ================== BACKGROUND AURA EFFECTS ================== */
+.aura-cyan {
+  animation: pulseGlow 8s ease-in-out infinite;
+}
+
+.aura-purple {
+  animation: pulseGlow 10s ease-in-out infinite 2s;
+}
+
+.aura-emerald {
+  animation: pulseGlow 9s ease-in-out infinite 4s;
+}
+
+/* ================== FORM INPUT STATES ================== */
+.form-input {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.form-input.is-invalid {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2;
+}
+
+.form-input.is-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+}
+
+.form-input.is-valid {
+  border-color: #10b981;
+}
+
+/* ================== BUTTON & SPINNER ================== */
+.btn-submit {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4);
+}
+
+.btn-submit:active:not(:disabled) {
+  transform: translateY(0px);
+  box-shadow: 0 4px 12px -2px rgba(37, 99, 235, 0.3);
+}
+
+.btn-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.spinner {
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ================== ALERT BANNER ================== */
+.alert-banner {
+  transition: all 0.3s ease-in-out;
+}
+
+.alert-banner.alert-hidden {
+  display: none;
+  opacity: 0;
+  max-height: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.alert-banner.alert-visible {
+  display: flex;
+  opacity: 1;
+  max-height: 200px;
+}
+
+/* ================== DEMO BADGE PILLS ================== */
+.demo-pill {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.demo-pill:hover {
+  transform: translateY(-1px);
+  border-color: #93c5fd;
+  background-color: #eff6ff;
+}
+
