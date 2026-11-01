@@ -34,10 +34,15 @@ function createApp(options = {}) {
   // Phục vụ giao diện Frontend UI trực tiếp trên trình duyệt
   const publicDir = path.join(__dirname, '../public');
   app.use(express.static(publicDir));
+
+  // Route phục vụ giao diện
   app.get('/patients-ui', (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
   });
   app.get('/appointments', (req, res) => {
+    res.sendFile(path.join(publicDir, 'appointments.html'));
+  });
+  app.get('/appointments-ui', (req, res) => {
     res.sendFile(path.join(publicDir, 'appointments.html'));
   });
   app.get('/', (req, res) => {
