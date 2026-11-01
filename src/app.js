@@ -8,6 +8,7 @@ const createAppointmentRoutes = require('./routes/appointmentRoutes');
 const patientRoutes = require('./routes/patient.routes');
 const appointmentV1Routes = require('./modules/appointments/appointment.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const patientV1Routes = require('./modules/patients/patient.routes');
 const errorHandler = require('./middleware/errorHandler');
 const swaggerDocument = require('./swagger/swagger');
 
@@ -61,6 +62,7 @@ function createApp(options = {}) {
   app.use('/api', createAppointmentRoutes(service));
   app.use('/api/patients', options.patientRoutes || patientRoutes);
   app.use('/api/v1/appointments', options.appointmentV1Routes || appointmentV1Routes);
+  app.use('/api/v1/patients', options.patientV1Routes || patientV1Routes);
   app.use('/api/v1/admin/dashboard', options.dashboardRoutes || dashboardRoutes);
   app.use(errorHandler);
 
