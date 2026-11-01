@@ -6,6 +6,7 @@ const AppointmentRepository = require('./repositories/appointmentRepository');
 const { AppointmentService } = require('./services/appointmentService');
 const createAppointmentRoutes = require('./routes/appointmentRoutes');
 const patientRoutes = require('./routes/patient.routes');
+const { createAuthV1Routes } = require('./modules/auth/auth.routes');
 const createAuthRoutes = require('./routes/auth.routes');
 const appointmentV1Routes = require('./modules/appointments/appointment.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
@@ -73,7 +74,7 @@ function createApp(options = {}) {
   app.get('/openapi.json', (req, res) => res.json(swaggerDocument));
 
   // REST API Routes
-  const authRoutes = createAuthRoutes();
+  const authRoutes = options.authRoutes || createAuthV1Routes();
   app.use('/api/v1/auth', authRoutes);
   app.use('/auth', authRoutes);
   app.use('/api', createAppointmentRoutes(service));
