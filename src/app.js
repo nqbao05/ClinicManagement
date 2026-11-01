@@ -46,6 +46,12 @@ function createApp(options = {}) {
   app.get('/appointments-ui', (req, res) => {
     res.sendFile(path.join(publicDir, 'appointments.html'));
   });
+  app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(publicDir, 'dashboard.html'));
+  });
+  app.get('/dashboard-ui', (req, res) => {
+    res.sendFile(path.join(publicDir, 'dashboard.html'));
+  });
   app.get('/', (req, res) => {
     res.redirect('/patients-ui');
   });

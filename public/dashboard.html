@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Báo Cáo Thống Kê Đa Node - TV4 Admin Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Dashboard CSS -->
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- ========================================================
+       TOP NAVIGATION & REALTIME NODE STATUS BAR
+       ======================================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Module Title -->
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md flex items-center justify-center">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+              Admin Analytics
+            </h1>
+            <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200">
+              TV4 Enterprise
+            </span>
+          </div>
+          <p class="text-xs text-slate-500">Phân hệ Thống kê & Phân tích tổng hợp đa Node CSDL (Sharding)</p>
+        </div>
+      </div>
+
+      <!-- Realtime Node Status Badges (Header Display) -->
+      <div class="hidden md:flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+        <!-- Node 1: Hà Nội -->
+        <div id="header-node-hanoi" class="flex items-center gap-2 px-2.5 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
+          <span class="status-pulse online w-2 h-2 rounded-full bg-emerald-500"></span>
+          <div class="text-left">
+            <span class="block text-[10px] font-medium text-slate-500 uppercase">Node Hà Nội</span>
+            <span class="node-status-text text-xs font-bold text-emerald-600">ONLINE</span>
+          </div>
+        </div>
+
+        <!-- Node 2: TP.HCM -->
+        <div id="header-node-hcm" class="flex items-center gap-2 px-2.5 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
+          <span class="status-pulse online w-2 h-2 rounded-full bg-emerald-500"></span>
+          <div class="text-left">
+            <span class="block text-[10px] font-medium text-slate-500 uppercase">Node TP.HCM</span>
+            <span class="node-status-text text-xs font-bold text-emerald-600">ONLINE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Module Navigation Links -->
+      <nav class="flex items-center gap-1.5 sm:gap-2">
+        <a href="/patients-ui" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span class="hidden lg:inline">Bệnh Nhân (TV2)</span>
+        </a>
+        <a href="/appointments" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          <span class="hidden lg:inline">Đặt Lịch (TV3)</span>
+        </a>
+        <a href="/dashboard" class="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg shadow-2xs flex items-center gap-1.5">
+          <i data-lucide="line-chart" class="w-4 h-4 text-indigo-600"></i>
+          <span>Thống Kê (TV4)</span>
+        </a>
+        <a href="/api-docs" target="_blank" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="file-code-2" class="w-4 h-4 text-emerald-600"></i>
+          <span class="hidden sm:inline">Swagger</span>
+        </a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ========================================================
+       MAIN DASHBOARD CONTAINER
+       ======================================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 flex-1 w-full">
+
+    <!-- ALERT BANNER: CẢNH BÁO LỖI CLIENT HOẶC LỖI MẠNG -->
+    <div id="client-alert-banner" class="hidden p-4 rounded-xl border flex items-start gap-3 transition-all" role="alert">
+      <div id="client-alert-icon" class="mt-0.5 shrink-0"></div>
+      <div class="flex-1 space-y-0.5">
+        <h4 id="client-alert-title" class="font-bold text-sm"></h4>
+        <p id="client-alert-message" class="text-xs"></p>
+      </div>
+      <button id="client-alert-retry-btn" class="hidden px-3 py-1 text-xs font-bold bg-white rounded-lg border shadow-2xs hover:bg-slate-50 transition-all flex items-center gap-1">
+        <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+        <span>Thử lại</span>
+      </button>
+      <button id="client-alert-close-btn" class="text-slate-400 hover:text-slate-600 p-1">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- SYSTEM WARNING BANNER: CƠ CHẾ CHỊU LỖI PHÂN TÁN (FAULT-TOLERANCE) -->
+    <div id="system-warning-banner" class="hidden alert-banner-warning p-4 rounded-xl shadow-xs flex items-start gap-3">
+      <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
+        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+      </div>
+      <div class="flex-1 space-y-1">
+        <div class="flex items-center gap-2">
+          <h4 class="font-bold text-sm text-amber-900">Cảnh Báo Gián Đoạn Kết Nối Node CSDL (Fault-Tolerant Mode)</h4>
+          <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-200 text-amber-900 rounded-full">Graceful Degradation</span>
+        </div>
+        <div id="system-warning-list" class="text-xs text-amber-800 space-y-1"></div>
+        <p class="text-[11px] text-amber-700 italic mt-1">
+          * Dashboard vẫn duy trì hiển thị an toàn số liệu từ các Node khả dụng mà không làm gián đoạn trải nghiệm của Quản trị viên.
+        </p>
+      </div>
+    </div>
+
+    <!-- ========================================================
+         FILTER TOOLBAR (KHOẢNG THỜI GIAN BÁO CÁO)
+         ======================================================== -->
+    <section class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      <form id="filter-form" class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-3 flex-1">
+          <!-- Từ ngày -->
+          <div class="flex-1 max-w-xs">
+            <label for="fromDate" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Từ Ngày (From Date)</span>
+            </label>
+            <input 
+              type="date" 
+              id="fromDate" 
+              name="fromDate"
+              class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+            >
+          </div>
+
+          <!-- Đến ngày -->
+          <div class="flex-1 max-w-xs">
+            <label for="toDate" class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+              <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+              <span>Đến Ngày (To Date)</span>
+            </label>
+            <input 
+              type="date" 
+              id="toDate" 
+              name="toDate"
+              class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 focus:bg-white outline-none transition-all"
+            >
+          </div>
+
+          <!-- Nút Lọc Báo Cáo -->
+          <button 
+            type="submit" 
+            id="filter-btn"
+            class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <span id="filter-btn-spinner" class="hidden">
+              <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i>
+            </span>
+            <span id="filter-btn-icon">
+              <i data-lucide="filter" class="w-4 h-4"></i>
+            </span>
+            <span id="filter-btn-text">Lọc Báo Cáo</span>
+          </button>
+
+          <!-- Nút 30 Ngày Gần Nhất (Reset) -->
+          <button 
+            type="button" 
+            id="reset-btn"
+            class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-sm rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            title="Khôi phục về cửa sổ 30 ngày gần nhất"
+          >
+            <i data-lucide="rotate-ccw" class="w-4 h-4 text-slate-500"></i>
+            <span>30 Ngày Gần Nhất</span>
+          </button>
+        </div>
+
+        <!-- Active Time Range Badge Display -->
+        <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 self-start lg:self-end">
+          <i data-lucide="clock" class="w-4 h-4 text-indigo-500"></i>
+          <span>Cửa sổ truy vấn:</span>
+          <span id="active-range-text" class="font-bold text-slate-800">Đang tải...</span>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- ========================================================
+         4 KPI METRIC CARDS
+         ======================================================== -->
+    <section id="kpi-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- KPI 1: Tổng số ca khám -->
+      <div class="kpi-card kpi-blue flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Tổng Số Ca Khám</span>
+          <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+            <i data-lucide="calendar-check-2" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="kpi-total-appointments" class="kpi-value text-3xl font-extrabold text-slate-900 tracking-tight">0</span>
+          <span class="text-xs text-slate-400">Toàn hệ thống</span>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Chờ khám: <strong id="kpi-pending-appointments" class="text-amber-600">0</strong></span>
+          <span>Xác nhận: <strong id="kpi-confirmed-appointments" class="text-emerald-600">0</strong></span>
+        </div>
+      </div>
+
+      <!-- KPI 2: Tổng số bệnh nhân -->
+      <div class="kpi-card kpi-teal flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Tổng Số Bệnh Nhân</span>
+          <div class="p-2 bg-teal-50 text-teal-600 rounded-xl">
+            <i data-lucide="users" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="kpi-total-patients" class="kpi-value text-3xl font-extrabold text-slate-900 tracking-tight">0</span>
+          <span class="text-xs text-slate-400">Hồ sơ đã lưu</span>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Phân tán đa Node CSDL</span>
+          <span class="font-semibold text-teal-600">Sharded Tables</span>
+        </div>
+      </div>
+
+      <!-- KPI 3: Tỷ lệ hoàn thành / xác nhận -->
+      <div class="kpi-card kpi-emerald flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Tỷ Lệ Xác Nhận Khám</span>
+          <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="kpi-completion-rate" class="kpi-value text-3xl font-extrabold text-emerald-600 tracking-tight">0.0%</span>
+          <span class="text-xs text-slate-400">Confirmed / Total</span>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Tiến độ ca khám thực tế</span>
+          <span class="font-semibold text-emerald-600">Mục tiêu > 50%</span>
+        </div>
+      </div>
+
+      <!-- KPI 4: Số ca đã hủy -->
+      <div class="kpi-card kpi-rose flex flex-col justify-between">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Số Ca Đã Hủy</span>
+          <div class="p-2 bg-rose-50 text-rose-600 rounded-xl">
+            <i data-lucide="calendar-x-2" class="w-5 h-5"></i>
+          </div>
+        </div>
+        <div class="flex items-baseline justify-between">
+          <span id="kpi-cancelled-appointments" class="kpi-value text-3xl font-extrabold text-rose-600 tracking-tight">0</span>
+          <span class="text-xs text-slate-400">Status = Cancelled</span>
+        </div>
+        <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span>Tỷ lệ hủy: <strong id="kpi-cancellation-rate" class="text-rose-600">0.0%</strong></span>
+          <span class="text-slate-400">Loại trừ khỏi thống kê</span>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================================
+         RESPONSIVE 2-COLUMN GRID (DISTRIBUTION & SPECIALTIES)
+         ======================================================== -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- CỘT 1 (lg:col-span-5): PHÂN BỔ CA KHÁM THEO CHI NHÁNH ĐA NODE -->
+      <section class="lg:col-span-5 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 bg-teal-50 text-teal-600 rounded-xl">
+              <i data-lucide="map-pin" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Phân Bổ Ca Khám Theo Cơ Sở</h2>
+              <p class="text-xs text-slate-500">Tỷ trọng lượt khám phân mảnh giữa các Node</p>
+            </div>
+          </div>
+          <span class="text-xs font-semibold px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg">2 Cơ Sở</span>
+        </div>
+
+        <div id="regional-distribution-container" class="space-y-6">
+          
+          <!-- Node 1: Cơ sở Hà Nội -->
+          <div id="region-card-hanoi" class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 transition-all">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-teal-600"></span>
+                <span class="font-bold text-sm text-slate-800">Cơ sở Hà Nội</span>
+                <span class="text-[11px] text-slate-500 font-mono">(clinic_hanoi)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="hanoi-status-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700">ONLINE</span>
+                <span id="hanoi-count-text" class="text-sm font-extrabold text-slate-900">0 ca</span>
+              </div>
+            </div>
+
+            <!-- Progress Bar Hà Nội -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs text-slate-500 font-medium">
+                <span>Tỷ trọng lượt khám</span>
+                <span id="hanoi-percent-text" class="font-bold text-teal-700">0.0%</span>
+              </div>
+              <div class="progress-track">
+                <div id="hanoi-progress-bar" class="progress-fill progress-fill-hanoi" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Node 2: Cơ sở TP.HCM -->
+          <div id="region-card-hcm" class="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3 transition-all">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-violet-600"></span>
+                <span class="font-bold text-sm text-slate-800">Cơ sở TP.HCM</span>
+                <span class="text-[11px] text-slate-500 font-mono">(clinic_hcm)</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="hcm-status-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-100 text-emerald-700">ONLINE</span>
+                <span id="hcm-count-text" class="text-sm font-extrabold text-slate-900">0 ca</span>
+              </div>
+            </div>
+
+            <!-- Progress Bar TP.HCM -->
+            <div class="space-y-1">
+              <div class="flex justify-between text-xs text-slate-500 font-medium">
+                <span>Tỷ trọng lượt khám</span>
+                <span id="hcm-percent-text" class="font-bold text-violet-700">0.0%</span>
+              </div>
+              <div class="progress-track">
+                <div id="hcm-progress-bar" class="progress-fill progress-fill-hcm" style="width: 0%;"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Node Health Overview Info Box -->
+        <div class="p-3.5 bg-indigo-50/70 rounded-xl border border-indigo-100 flex items-start gap-2.5 text-xs text-indigo-900">
+          <i data-lucide="info" class="w-4 h-4 text-indigo-600 shrink-0 mt-0.5"></i>
+          <p class="leading-relaxed">
+            Hệ thống tự động thực thi truy vấn song song qua <strong>Promise.allSettled</strong>. Trong trường hợp 1 cơ sở mất mạng, số liệu vẫn được gom nhóm chính xác từ cơ sở hoạt động bình thường.
+          </p>
+        </div>
+      </section>
+
+      <!-- CỘT 2 (lg:col-span-7): PHÂN TÍCH LƯỢT KHÁM THEO CHUYÊN KHOA -->
+      <section class="lg:col-span-7 bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+          <div class="flex items-center gap-2.5">
+            <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+              <i data-lucide="stethoscope" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h2 class="text-base font-bold text-slate-900">Phân Tích Lượt Khám Theo Chuyên Khoa</h2>
+              <p class="text-xs text-slate-500">Số liệu tổng hợp từ các bác sĩ đã tiếp nhận lịch (Loại trừ ca hủy)</p>
+            </div>
+          </div>
+          <span id="specialty-count-badge" class="text-xs font-semibold px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg">
+            0 Chuyên khoa
+          </span>
+        </div>
+
+        <!-- BẢNG CHUYÊN KHOA RESPONSIVE -->
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-[11px] font-bold uppercase tracking-wider text-slate-500 bg-slate-50/80">
+                <th class="py-2.5 px-3 rounded-l-lg">Hạng</th>
+                <th class="py-2.5 px-3">Tên Chuyên Khoa</th>
+                <th class="py-2.5 px-3 text-right">Lượt Khám</th>
+                <th class="py-2.5 px-3 text-right">Tỷ Trọng</th>
+                <th class="py-2.5 px-3 w-40 rounded-r-lg">Biểu Đồ</th>
+              </tr>
+            </thead>
+            <tbody id="specialty-table-body" class="divide-y divide-slate-100 text-xs">
+              <!-- Sẽ render động từ JavaScript -->
+            </tbody>
+          </table>
+
+          <!-- Empty State khi không có chuyên khoa nào -->
+          <div id="specialty-empty-state" class="hidden py-12 text-center space-y-3">
+            <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+              <i data-lucide="clipboard-x" class="w-6 h-6"></i>
+            </div>
+            <h4 class="font-bold text-slate-700 text-sm">Chưa Có Dữ Liệu Chuyên Khoa</h4>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">
+              Chưa ghi nhận ca khám bệnh nào trong khoảng thời gian đã chọn hoặc tất cả các ca khám đều ở trạng thái Hủy.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================
+       FOOTER
+       ======================================================== -->
+  <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+      Clinic Management System &copy; 2026. Phân hệ Admin Analytics (Thành viên 4) &middot; Clean Architecture &middot; Multi-Node MySQL Sharding.
+    </div>
+  </footer>
+
+  <!-- Dashboard JavaScript Logic -->
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

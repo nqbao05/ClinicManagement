@@ -13,6 +13,7 @@ async function startServer() {
     console.log(`Swagger UI: http://localhost:${port}/api-docs`);
     console.log(`Patient UI: http://localhost:${port}/patients-ui`);
     console.log(`Appointments UI: http://localhost:${port}/appointments`);
+    console.log(`Dashboard UI: http://localhost:${port}/dashboard`);
   });
 }
 
