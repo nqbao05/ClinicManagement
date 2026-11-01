@@ -116,6 +116,9 @@ class AppointmentRepository {
     } catch (error) {
       // Rollback hoàn tác mọi thay đổi nếu xảy ra lỗi
       await conn.rollback();
+      if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+        throw new ConflictError('Khung giờ này của bác sĩ vừa có người đặt trước!');
+      }
       throw error;
     } finally {
       // Bắt buộc giải phóng kết nối về Pool để tránh connection leak

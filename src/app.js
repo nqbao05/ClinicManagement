@@ -7,20 +7,27 @@ const { AppointmentService } = require('./services/appointmentService');
 const createAppointmentRoutes = require('./routes/appointmentRoutes');
 const patientRoutes = require('./routes/patient.routes');
 const { createAuthV1Routes } = require('./modules/auth/auth.routes');
-const createAuthRoutes = require('./routes/auth.routes');
 const appointmentV1Routes = require('./modules/appointments/appointment.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const patientV1Routes = require('./modules/patients/patient.routes');
-const errorHandler = require('./middleware/errorHandler');
-const swaggerDocument = require('./swagger/swagger');
+const clinicRoutes = require('./modules/clinics/clinic.routes');
+const doctorRoutes = require('./modules/doctors/doctor.routes');
+const errorHandler = require('./common/middlewares/error.middleware');
+const NotFoundError = require('./common/errors/not-found.error');
+const swaggerDocument = require('./config/swagger');
 
+/**
+ * Khởi tạo ứng dụng Express chuẩn Clean Architecture & Modular Monolith
+ * @param {Object} [options]
+ * @returns {import('express').Express}
+ */
 function createApp(options = {}) {
   const db = options.db || createDatabase();
   const repository = new AppointmentRepository(db);
   const service = new AppointmentService(repository);
   const app = express();
 
-  // CORS Middleware: Cho phép Frontend gọi API và truyền Cookie
+  // 1. CORS Middleware: Cho phép Frontend gọi API và truyền Cookie
   app.use((req, res, next) => {
     const origin = req.headers.origin || 'http://localhost:3000';
     res.header('Access-Control-Allow-Origin', origin);
@@ -33,30 +40,36 @@ function createApp(options = {}) {
     next();
   });
 
+  // 2. Parse Body Payloads: JSON & URL-encoded
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
-  // Phục vụ giao diện Frontend UI trực tiếp từ thư mục public/
+  // 3. Phục vụ giao diện Frontend UI trực tiếp từ thư mục public/
   const publicDir = path.join(__dirname, '../public');
   app.use(express.static(publicDir));
 
-  // 1. Cổng đăng nhập phân hệ Xác thực (TV1)
+  // Giao diện tĩnh: Đăng nhập (TV1)
   app.get('/login', (req, res) => {
     res.sendFile(path.join(publicDir, 'login.html'));
   });
 
-  // 2. Các cổng giao diện chức năng (TV2, TV3, TV4)
+  // Giao diện tĩnh: Hồ sơ Bệnh nhân (TV2)
   app.get('/patients', (req, res) => {
     res.sendFile(path.join(publicDir, 'patients.html'));
   });
   app.get('/patients-ui', (req, res) => {
     res.sendFile(path.join(publicDir, 'patients.html'));
   });
+
+  // Giao diện tĩnh: Đặt lịch khám (TV3)
   app.get('/appointments', (req, res) => {
     res.sendFile(path.join(publicDir, 'appointments.html'));
   });
   app.get('/appointments-ui', (req, res) => {
     res.sendFile(path.join(publicDir, 'appointments.html'));
   });
+
+  // Giao diện tĩnh: Báo cáo Thống kê Đa Node (TV4)
   app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(publicDir, 'dashboard.html'));
   });
@@ -64,26 +77,36 @@ function createApp(options = {}) {
     res.sendFile(path.join(publicDir, 'dashboard.html'));
   });
 
-  // Trang chủ mặc định điều hướng tới cổng đăng nhập /login
+  // Cổng điều hướng gốc (Root Portal)
   app.get('/', (req, res) => {
-    res.redirect('/login');
+    res.sendFile(path.join(publicDir, 'index.html'));
   });
 
-  // Swagger Documentation
+  // 4. OpenAPI / Swagger Documentation
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
   app.get('/openapi.json', (req, res) => res.json(swaggerDocument));
 
-  // REST API Routes
+  // 5. RESTful API Routes V1
   const authRoutes = options.authRoutes || createAuthV1Routes();
   app.use('/api/v1/auth', authRoutes);
-  app.use('/auth', authRoutes);
-  app.use('/api', createAppointmentRoutes(service));
-  app.use('/api/patients', options.patientRoutes || patientRoutes);
-  app.use('/api/v1/appointments', options.appointmentV1Routes || appointmentV1Routes);
+  app.use('/auth', authRoutes); // Alias tương thích ngược
+
+  app.use('/api/v1/clinics', options.clinicRoutes || clinicRoutes);
+  app.use('/api/v1/doctors', options.doctorRoutes || doctorRoutes);
   app.use('/api/v1/patients', options.patientV1Routes || patientV1Routes);
+  app.use('/api/v1/appointments', options.appointmentV1Routes || appointmentV1Routes);
   app.use('/api/v1/admin/dashboard', options.dashboardRoutes || dashboardRoutes);
 
-  // Global Error Handler
+  // Tuyến tương thích ngược cho các bài test baseline
+  app.use('/api', createAppointmentRoutes(service));
+  app.use('/api/patients', options.patientRoutes || patientRoutes);
+
+  // 6. 404 Route Handler cho các endpoint API không tồn tại
+  app.use('/api', (req, res, next) => {
+    next(new NotFoundError(`Endpoint ${req.method} ${req.originalUrl} không tồn tại trên hệ thống`));
+  });
+
+  // 7. Error Middleware: Đặt ở cuối cùng của pipeline Express
   app.use(errorHandler);
 
   app.locals.db = db;

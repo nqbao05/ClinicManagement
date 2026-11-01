@@ -3,78 +3,152 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ClinicCare Distributed - Cổng Điều Hướng</title>
+  <title>Cổng Điều Hướng Hệ Thống - Clinic Management System</title>
   
-  <!-- Chuyển hướng thông minh dựa vào trạng thái phiên làm việc -->
-  <script>
-    (function () {
-      try {
-        var currentPath = window.location.pathname;
-        // Chỉ kích hoạt tự động chuyển hướng khi truy cập ở trang gốc '/' hoặc '/index.html'
-        // Ngăn chặn triệt để vòng lặp tải vô hạn (Infinite Loop) nếu server nạp index.html ở các route khác
-        if (currentPath === '/' || currentPath === '/index.html' || currentPath === '') {
-          var token = localStorage.getItem('accessToken');
-          var session = localStorage.getItem('userSession');
-          if (token && session) {
-            window.location.replace('/patients-ui');
-          } else {
-            window.location.replace('/login');
-          }
-        }
-      } catch (e) {
-        window.location.replace('/login');
-      }
-    })();
-  </script>
-
-  <!-- Fallback Stylesheet & Icons -->
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4 font-sans selection:bg-blue-500 selection:text-white">
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans selection:bg-blue-500 selection:text-white">
 
-  <div class="w-full max-w-sm bg-white rounded-2xl border border-slate-200/90 shadow-xl p-8 text-center space-y-5">
-    
-    <!-- Animated Medical Loading Spinner -->
-    <div class="relative w-16 h-16 mx-auto flex items-center justify-center">
-      <div class="absolute inset-0 rounded-2xl bg-blue-100 animate-pulse"></div>
-      <div class="relative w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-md">
-        <i data-lucide="activity" class="w-6 h-6 animate-spin"></i>
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-md">
+          <i data-lucide="activity" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+            ClinicCare Distributed System
+          </h1>
+          <p class="text-xs text-slate-500">Cổng Điều Hướng Tích Hợp (Enterprise Clean Architecture)</p>
+        </div>
       </div>
+      <a href="/login" class="px-3.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5">
+        <i data-lucide="log-in" class="w-4 h-4"></i>
+        <span>Đăng Nhập</span>
+      </a>
     </div>
+  </header>
 
-    <div>
-      <h1 class="text-lg font-bold text-slate-900">
-        Clinic<span class="text-blue-600">Care</span> Distributed
-      </h1>
-      <p class="text-xs text-slate-500 mt-1">
-        Đang xác thực phiên làm việc và điều hướng vào hệ thống...
+  <!-- Main Portal -->
+  <main class="max-w-5xl mx-auto px-4 py-10 flex-1 w-full space-y-8">
+    <div class="text-center space-y-2 max-w-xl mx-auto">
+      <span class="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 rounded-full border border-blue-200">
+        Modular Monolith &bull; MySQL Sharding
+      </span>
+      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
+        Cổng Truy Cập 3 Phân Hệ Nghiệp Vụ
+      </h2>
+      <p class="text-sm text-slate-500">
+        Chọn một phân hệ bên dưới để trải nghiệm giao diện người dùng và kiểm tra tính toàn vẹn dữ liệu đa cơ sở.
       </p>
     </div>
 
-    <!-- Nút truy cập thủ công nếu JavaScript bị chặn -->
-    <div class="space-y-2 pt-2 border-t border-slate-100">
-      <a
-        href="/login"
-        class="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition shadow-sm"
-      >
-        <i data-lucide="log-in" class="w-4 h-4"></i>
-        <span>Cổng Đăng Nhập (Login)</span>
+    <!-- Grid 3 Màn hình chính -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      <!-- Card TV2: Hồ sơ bệnh nhân -->
+      <a href="/patients-ui" class="group bg-white p-6 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
+        <div class="space-y-4">
+          <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i data-lucide="users" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Thành viên 2</span>
+            <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+              Hồ Sơ Bệnh Nhân
+            </h3>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              Quản lý danh sách, đăng ký mới bệnh nhân với khóa phân mảnh <code>origin_clinic_id</code> và tra cứu Cross-Node song song.
+            </p>
+          </div>
+        </div>
+        <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+          <span>Truy cập màn hình</span>
+          <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+        </div>
       </a>
 
-      <a
-        href="/patients-ui"
-        class="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition"
+      <!-- Card TV3: Đặt lịch khám bệnh -->
+      <a href="/appointments" class="group bg-white p-6 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between">
+        <div class="space-y-4">
+          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i data-lucide="calendar" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Thành viên 3</span>
+            <h3 class="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+              Đặt Lịch Khám Bệnh
+            </h3>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              Đặt lịch theo khung giờ Time Slot, tích hợp khóa bi quan (Pessimistic Lock) chống Race Condition và Concurrency Fallback UI.
+            </p>
+          </div>
+        </div>
+        <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+          <span>Truy cập màn hình</span>
+          <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+        </div>
+      </a>
+
+      <!-- Card TV4: Báo cáo Thống kê -->
+      <a href="/dashboard" class="group bg-white p-6 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between">
+        <div class="space-y-4">
+          <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+            <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Thành viên 4</span>
+            <h3 class="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+              Báo Cáo Thống Kê
+            </h3>
+            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+              Tổng hợp số liệu thời gian thực từ cả 2 Node CSDL qua Promise.allSettled, giám sát sức khỏe Node và phân tích chuyên khoa.
+            </p>
+          </div>
+        </div>
+        <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+          <span>Truy cập màn hình</span>
+          <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Section Swagger UI API Documentation -->
+    <div class="p-6 bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-2xl shadow-md flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/30">
+          <i data-lucide="file-code-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="font-bold text-base">Tài Liệu Swagger / OpenAPI 3.0</h3>
+          <p class="text-xs text-slate-300">
+            Khám phá đầy đủ chi tiết các Endpoint RESTful API V1 và tương tác thử nghiệm trực tiếp.
+          </p>
+        </div>
+      </div>
+      <a 
+        href="/api-docs" 
+        target="_blank" 
+        class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs rounded-xl shadow transition-all flex items-center gap-1.5 shrink-0"
       >
-        <i data-lucide="users" class="w-4 h-4"></i>
-        <span>Hồ Sơ Bệnh Nhân (Patients)</span>
+        <span>Mở Swagger UI</span>
+        <i data-lucide="external-link" class="w-4 h-4"></i>
       </a>
     </div>
 
-    <p class="text-[11px] text-slate-400">
-      Hệ thống Y tế Đa cơ sở &bull; MySQL Sharding Architecture
-    </p>
-  </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-4">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+      Clinic Management System &copy; 2026 &middot; Modular Monolith &middot; Clean Architecture &middot; MySQL Sharding.
+    </div>
+  </footer>
 
   <script>
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
