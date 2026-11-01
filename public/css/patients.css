@@ -1,0 +1,170 @@
+/* ==========================================================================
+   PATIENTS MANAGEMENT STYLESHEET (TV2 - Horizontal Sharding & Profile Management)
+   Chuẩn mực giao diện: Medical Clean UI / Tailwind CSS Supplementary
+   ========================================================================== */
+
+/* Badge định danh chi nhánh phòng khám (Sharding Node) */
+.badge-clinic {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1rem;
+  border-width: 1px;
+  transition: all 0.2s ease;
+}
+
+.badge-hanoi {
+  background-color: #eff6ff; /* Blue 50 */
+  color: #1d4ed8;            /* Blue 700 */
+  border-color: #bfdbfe;     /* Blue 200 */
+}
+
+.badge-hcm {
+  background-color: #faf5ff; /* Purple 50 */
+  color: #6b21a8;            /* Purple 800 */
+  border-color: #e9d5ff;     /* Purple 200 */
+}
+
+/* Alert Banner Thông Báo Động */
+.alert-banner {
+  border-radius: 0.75rem;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  animation: fadeInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s ease;
+}
+
+.alert-success {
+  background-color: #f0fdf4; /* Green 50 */
+  border-left: 4px solid #16a34a; /* Green 600 */
+  color: #166534; /* Green 800 */
+}
+
+.alert-danger {
+  background-color: #fef2f2; /* Red 50 */
+  border-left: 4px solid #dc2626; /* Red 600 */
+  color: #991b1b; /* Red 800 */
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Định dạng Form Nhập Liệu & Validation Error */
+.form-input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.75rem;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  background-color: #ffffff;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.form-input.input-error {
+  border-color: #ef4444 !important;
+  background-color: #fef2f2 !important;
+}
+
+.form-input.input-error:focus {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.error-feedback {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Bảng Dữ Liệu Bệnh Nhân (Table Styling) */
+.patient-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: left;
+}
+
+.patient-table th {
+  padding: 0.75rem 1rem;
+  background-color: #f8fafc;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.patient-table td {
+  padding: 0.875rem 1rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.patient-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Shimmer Loading cho Table */
+.skeleton-row td {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Tùy chỉnh Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}

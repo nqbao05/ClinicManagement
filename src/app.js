@@ -7,6 +7,9 @@ const { AppointmentService } = require('./services/appointmentService');
 const createAppointmentRoutes = require('./routes/appointmentRoutes');
 const patientRoutes = require('./routes/patient.routes');
 const createAuthRoutes = require('./routes/auth.routes');
+const appointmentV1Routes = require('./modules/appointments/appointment.routes');
+const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const patientV1Routes = require('./modules/patients/patient.routes');
 const errorHandler = require('./middleware/errorHandler');
 const swaggerDocument = require('./swagger/swagger');
 
@@ -40,9 +43,24 @@ function createApp(options = {}) {
     res.sendFile(path.join(publicDir, 'login.html'));
   });
 
-  // 2. Cổng quản lý hồ sơ bệnh án đa cơ sở (TV2, TV3, TV4)
+  // 2. Các cổng giao diện chức năng (TV2, TV3, TV4)
+  app.get('/patients', (req, res) => {
+    res.sendFile(path.join(publicDir, 'patients.html'));
+  });
   app.get('/patients-ui', (req, res) => {
-    res.sendFile(path.join(publicDir, 'index.html'));
+    res.sendFile(path.join(publicDir, 'patients.html'));
+  });
+  app.get('/appointments', (req, res) => {
+    res.sendFile(path.join(publicDir, 'appointments.html'));
+  });
+  app.get('/appointments-ui', (req, res) => {
+    res.sendFile(path.join(publicDir, 'appointments.html'));
+  });
+  app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(publicDir, 'dashboard.html'));
+  });
+  app.get('/dashboard-ui', (req, res) => {
+    res.sendFile(path.join(publicDir, 'dashboard.html'));
   });
 
   // Trang chủ mặc định điều hướng tới cổng đăng nhập /login
@@ -60,6 +78,9 @@ function createApp(options = {}) {
   app.use('/auth', authRoutes);
   app.use('/api', createAppointmentRoutes(service));
   app.use('/api/patients', options.patientRoutes || patientRoutes);
+  app.use('/api/v1/appointments', options.appointmentV1Routes || appointmentV1Routes);
+  app.use('/api/v1/patients', options.patientV1Routes || patientV1Routes);
+  app.use('/api/v1/admin/dashboard', options.dashboardRoutes || dashboardRoutes);
 
   // Global Error Handler
   app.use(errorHandler);
