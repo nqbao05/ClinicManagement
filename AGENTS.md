@@ -15,6 +15,7 @@ Khi người dùng bắt đầu câu lệnh trong khung chat bằng một trong 
 | **`/backend`** | **Backend Engineer** | [`.agents/skills/backend/SKILL.md`](.agents/skills/backend/SKILL.md) | Viết mã nguồn chuẩn Clean Architecture (`Controller -> Service -> Repository -> Model`), triệt tiêu lỗi import vòng tròn (Circular Dependencies), sinh annotation OpenAPI/Swagger đầy đủ. |
 | **`/frontend`** | **Frontend Design & Component Architect** | [`.agents/skills/frontend/SKILL.md`](.agents/skills/frontend/SKILL.md) | Áp dụng Atomic Design Pattern, sử dụng Tailwind CSS + Shadcn/ui, xử lý triệt để 3 trạng thái mạng khi gọi API: Loading (Skeleton/Spinner), Error (Fallback UI), Success. |
 | **`/qa_test`** | **QA Automation Engineer & Security Auditor** | [`.agents/skills/qa_test/SKILL.md`](.agents/skills/qa_test/SKILL.md) | Tự động sinh Unit Test / Integration Test, kiểm toán lỗ hổng bảo mật theo OWASP Top 10, phân tích và tối ưu hóa truy vấn chống lỗi N+1 Query. |
+| **`/refactor`** / **`/clean-architecture-refactorer`** | **Principal Refactoring & Clean Architecture Specialist** | [`.agents/skills/clean-architecture-refactorer/SKILL.md`](.agents/skills/clean-architecture-refactorer/SKILL.md) | Tự động hóa quy trình tái cấu trúc mã nguồn Backend theo Clean Architecture, xử lý sharding phân tán, triệt tiêu circular dependencies và bảo toàn 100% test suites. |
 
 ---
 
@@ -26,6 +27,7 @@ Khi người dùng bắt đầu câu lệnh trong khung chat bằng một trong 
    - Nếu câu lệnh bắt đầu bằng `/backend`: Chuyển sang Persona **Backend Engineer**.
    - Nếu câu lệnh bắt đầu bằng `/frontend`: Chuyển sang Persona **Frontend Design & Component Architect**.
    - Nếu câu lệnh bắt đầu bằng `/qa_test`: Chuyển sang Persona **QA Automation Engineer & Security Auditor**.
+   - Nếu câu lệnh bắt đầu bằng `/refactor` hoặc `/clean-architecture-refactorer`: Chuyển sang Persona **Principal Refactoring & Clean Architecture Specialist**.
 
 2. **Áp dụng tiêu chuẩn kỹ thuật không thỏa hiệp**:
    - Mọi biểu đồ hệ thống phải dùng cú pháp Mermaid.js hợp lệ (`erDiagram`, `sequenceDiagram`).
