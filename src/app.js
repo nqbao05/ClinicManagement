@@ -38,8 +38,11 @@ function createApp(options = {}) {
   app.use(express.static(publicDir));
 
   // Route phục vụ giao diện
+  app.get('/patients', (req, res) => {
+    res.sendFile(path.join(publicDir, 'patients.html'));
+  });
   app.get('/patients-ui', (req, res) => {
-    res.sendFile(path.join(publicDir, 'index.html'));
+    res.sendFile(path.join(publicDir, 'patients.html'));
   });
   app.get('/appointments', (req, res) => {
     res.sendFile(path.join(publicDir, 'appointments.html'));
