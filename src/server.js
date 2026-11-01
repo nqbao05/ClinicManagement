@@ -1,7 +1,7 @@
 const createApp = require('./app');
 const { initDb } = require('./database/initDb');
 
-const port = Number(process.env.PORT) || 3001;
+const port = Number(process.env.PORT) || 3000;
 const app = createApp();
 
 async function startServer() {
@@ -12,6 +12,7 @@ async function startServer() {
     console.log(`Clinic Booking API listening on http://localhost:${port}`);
     console.log(`Swagger UI: http://localhost:${port}/api-docs`);
     console.log(`Patient UI: http://localhost:${port}/patients-ui`);
+    console.log(`Appointments UI: http://localhost:${port}/appointments`);
   });
 }
 
