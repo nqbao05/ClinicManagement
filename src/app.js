@@ -37,6 +37,9 @@ function createApp(options = {}) {
   app.get('/patients-ui', (req, res) => {
     res.sendFile(path.join(publicDir, 'index.html'));
   });
+  app.get('/appointments', (req, res) => {
+    res.sendFile(path.join(publicDir, 'appointments.html'));
+  });
   app.get('/', (req, res) => {
     res.redirect('/patients-ui');
   });

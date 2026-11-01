@@ -1,0 +1,146 @@
+/* ========================================================
+   Giao diện Đặt Lịch Khám Bệnh - Medical Clean UI
+   Tương thích Tailwind CSS & Hỗ trợ Concurrency Fallback UI
+   ======================================================== */
+
+:root {
+  --primary-blue: #2563eb;
+  --primary-blue-hover: #1d4ed8;
+  --slot-bg: #f8fafc;
+  --slot-border: #e2e8f0;
+  --slot-text: #334155;
+  --conflict-bg: #fef2f2;
+  --conflict-border: #f87171;
+  --conflict-text: #dc2626;
+  --booked-bg: #f1f5f9;
+  --booked-text: #94a3b8;
+}
+
+/* Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.05); opacity: 0.4; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s infinite ease-in-out;
+}
+
+/* Slot Button Base Styling */
+.slot-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.5rem;
+  background-color: var(--slot-bg);
+  border: 1.5px solid var(--slot-border);
+  border-radius: 0.75rem;
+  color: var(--slot-text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.slot-btn:hover:not(:disabled) {
+  background-color: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1);
+}
+
+.slot-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* State: Selected */
+.slot-btn.selected {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  transform: scale(1.02);
+}
+
+/* State: Booked (Đã có người đặt từ trước) */
+.slot-btn.booked {
+  background-color: var(--booked-bg) !important;
+  border-color: #e2e8f0 !important;
+  color: var(--booked-text) !important;
+  text-decoration: line-through;
+  cursor: not-allowed !important;
+  opacity: 0.65;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+/* State: Conflict (Xảy ra Race Condition tại thời điểm submit) */
+.slot-btn.conflict {
+  background-color: var(--conflict-bg) !important;
+  border-color: var(--conflict-border) !important;
+  color: var(--conflict-text) !important;
+  text-decoration: line-through;
+  cursor: not-allowed !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2) !important;
+  animation: shake 0.45s ease-in-out;
+}
+
+/* Alert Banner Styling */
+.alert-banner {
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.alert-success {
+  background-color: #f0fdf4;
+  border: 1.5px solid #86efac;
+  color: #166534;
+}
+
+.alert-danger {
+  background-color: #fef2f2;
+  border: 1.5px solid #fca5a5;
+  color: #991b1b;
+}
+
+.alert-warning {
+  background-color: #fffbeb;
+  border: 1.5px solid #fde68a;
+  color: #92400e;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
