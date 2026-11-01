@@ -13,13 +13,14 @@ class PatientController {
     this.createPatient = this.createPatient.bind(this);
     this.getPatients = this.getPatients.bind(this);
     this.getPatientDetail = this.getPatientDetail.bind(this);
+    this.getPatientById = this.getPatientById.bind(this);
+    this.updatePatient = this.updatePatient.bind(this);
+    this.deletePatient = this.deletePatient.bind(this);
   }
 
-  /**
-   * Đăng ký mới hồ sơ bệnh nhân
-   * POST /api/v1/patients
-   */
-  async createPatient(req, res, next) {
+  // --- V1 RESTful Handlers ---
+
+  async createPatientV1(req, res, next) {
     try {
       const result = await this.patientService.registerPatient(req.body);
       return sendSuccess(res, 201, 'Đăng ký hồ sơ bệnh nhân thành công', result);
@@ -28,11 +29,7 @@ class PatientController {
     }
   }
 
-  /**
-   * Tra cứu danh sách hồ sơ bệnh nhân (Hỗ trợ Cross-Node search)
-   * GET /api/v1/patients
-   */
-  async getPatients(req, res, next) {
+  async getPatientsV1(req, res, next) {
     try {
       const result = await this.patientService.searchPatients(req.query);
       return sendSuccess(res, 200, 'Lấy danh sách bệnh nhân thành công', result);
@@ -41,10 +38,6 @@ class PatientController {
     }
   }
 
-  /**
-   * Lấy chi tiết hồ sơ bệnh nhân theo ID
-   * GET /api/v1/patients/:id
-   */
   async getPatientDetail(req, res, next) {
     try {
       const patientId = req.params.id;
@@ -55,13 +48,68 @@ class PatientController {
       return next(error);
     }
   }
+
+  // --- Baseline Handlers (tests/patient.test.js compatibility) ---
+
+  async createPatient(req, res, next) {
+    try {
+      if (req.baseUrl && req.baseUrl.includes('/v1/')) {
+        return this.createPatientV1(req, res, next);
+      }
+      const patient = await this.patientService.create(req.body);
+      return res.status(201).json(patient);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async getPatients(req, res, next) {
+    try {
+      if (req.baseUrl && req.baseUrl.includes('/v1/')) {
+        return this.getPatientsV1(req, res, next);
+      }
+      const filter = {};
+      if (req.query.origin_clinic_id) {
+        filter.origin_clinic_id = Number(req.query.origin_clinic_id);
+      }
+
+      const activeClinicId = req.headers['x-clinic-id'] || req.query.current_clinic_id;
+      const patients = await this.patientService.findAll(filter, activeClinicId);
+      return res.status(200).json(patients);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async getPatientById(req, res, next) {
+    try {
+      const activeClinicId = req.headers['x-clinic-id'] || req.query.current_clinic_id;
+      const patient = await this.patientService.findById(req.params.id, activeClinicId);
+      return res.status(200).json(patient);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async updatePatient(req, res, next) {
+    try {
+      const updatedPatient = await this.patientService.update(req.params.id, req.body);
+      return res.status(200).json(updatedPatient);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async deletePatient(req, res, next) {
+    try {
+      const result = await this.patientService.remove(req.params.id);
+      return res.status(200).json(result);
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
-/**
- * Factory function tạo Controller instance
- * @param {Object} patientService 
- * @returns {PatientController}
- */
 function createPatientController(patientService) {
   return new PatientController(patientService);
 }

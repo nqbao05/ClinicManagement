@@ -2,11 +2,16 @@ const express = require('express');
 const path = require('path');
 const swaggerUi = require('swagger-ui-express');
 const { createDatabase } = require('./config/database');
-const AppointmentRepository = require('./repositories/appointmentRepository');
-const { AppointmentService } = require('./services/appointmentService');
-const createAppointmentRoutes = require('./routes/appointmentRoutes');
-const patientRoutes = require('./routes/patient.routes');
-const { createAuthV1Routes } = require('./modules/auth/auth.routes');
+const {
+  createAppointmentRoutes,
+  createAppointmentV1Routes,
+  AppointmentService,
+  AppointmentRepository
+} = require('./modules/appointments/appointment.routes');
+const {
+  createPatientRoutes,
+  createPatientV1Routes
+} = require('./modules/patients/patient.routes');
 const appointmentV1Routes = require('./modules/appointments/appointment.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const patientV1Routes = require('./modules/patients/patient.routes');
@@ -48,11 +53,6 @@ function createApp(options = {}) {
   const publicDir = path.join(__dirname, '../public');
   app.use(express.static(publicDir));
 
-  // Giao diện tĩnh: Đăng nhập (TV1)
-  app.get('/login', (req, res) => {
-    res.sendFile(path.join(publicDir, 'login.html'));
-  });
-
   // Giao diện tĩnh: Hồ sơ Bệnh nhân (TV2)
   app.get('/patients', (req, res) => {
     res.sendFile(path.join(publicDir, 'patients.html'));
@@ -87,10 +87,6 @@ function createApp(options = {}) {
   app.get('/openapi.json', (req, res) => res.json(swaggerDocument));
 
   // 5. RESTful API Routes V1
-  const authRoutes = options.authRoutes || createAuthV1Routes();
-  app.use('/api/v1/auth', authRoutes);
-  app.use('/auth', authRoutes); // Alias tương thích ngược
-
   app.use('/api/v1/clinics', options.clinicRoutes || clinicRoutes);
   app.use('/api/v1/doctors', options.doctorRoutes || doctorRoutes);
   app.use('/api/v1/patients', options.patientV1Routes || patientV1Routes);
@@ -99,7 +95,7 @@ function createApp(options = {}) {
 
   // Tuyến tương thích ngược cho các bài test baseline
   app.use('/api', createAppointmentRoutes(service));
-  app.use('/api/patients', options.patientRoutes || patientRoutes);
+  app.use('/api/patients', options.patientRoutes || createPatientRoutes());
 
   // 6. 404 Route Handler cho các endpoint API không tồn tại
   app.use('/api', (req, res, next) => {

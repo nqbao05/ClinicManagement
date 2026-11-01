@@ -2,9 +2,9 @@ process.env.NODE_ENV = 'test';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const createApp = require('../src/app');
-const { PatientRepository } = require('../src/repositories/patient.repository');
-const { PatientService } = require('../src/services/patient.service');
-const { createPatientRoutes } = require('../src/routes/patient.routes');
+const { PatientRepository } = require('../src/modules/patients/patient.repository');
+const { PatientService } = require('../src/modules/patients/patient.service');
+const { createPatientRoutes } = require('../src/modules/patients/patient.routes');
 
 async function withTestServer(testFn) {
   const repository = new PatientRepository();

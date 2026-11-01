@@ -1,6 +1,16 @@
 const NotFoundError = require('../../common/errors/not-found.error');
 const ConflictError = require('../../common/errors/conflict.error');
 const { validateAppointmentQuery } = require('./appointment.dto');
+const Appointment = require('./appointment.model');
+
+class SlotConflictError extends Error {
+  constructor(message = 'Lịch đã được người khác đặt') {
+    super(message);
+    this.name = 'SlotConflictError';
+    this.code = 'APPOINTMENT_SLOT_CONFLICT';
+    this.statusCode = 409;
+  }
+}
 
 /**
  * Service Layer: Xử lý toàn bộ logic nghiệp vụ cốt lõi của Đặt lịch khám (Appointments)
@@ -14,17 +24,48 @@ class AppointmentService {
    */
   constructor(appointmentRepository) {
     this.appointmentRepository = appointmentRepository;
+    this.repository = appointmentRepository;
   }
 
   /**
-   * Đặt lịch khám bệnh mới
-   * @param {Object} payload - { patient_id, doctor_id, clinic_id, slot_time }
-   * @returns {Promise<Object>}
+   * Đặt lịch khám chuẩn baseline (tương thích tests/appointment.test.js)
+   */
+  createBooking({ patientId, doctorId, clinicId, slotTime }) {
+    const parsedTime = new Date(slotTime);
+    if (!slotTime || Number.isNaN(parsedTime.getTime())) {
+      const error = new Error('slotTime không hợp lệ');
+      error.code = 'INVALID_SLOT_TIME';
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const normalizedSlot = parsedTime.toISOString();
+    const existing = this.appointmentRepository.findActiveByDoctorAndSlot(doctorId, normalizedSlot);
+    if (existing) throw new SlotConflictError();
+
+    try {
+      return this.appointmentRepository.create(new Appointment({
+        patient_id: patientId,
+        doctor_id: doctorId,
+        clinic_id: clinicId,
+        slot_time: normalizedSlot,
+        status: 'Pending'
+      }));
+    } catch (error) {
+      if (error.code === 'SQLITE_CONSTRAINT_UNIQUE' || error.code === 'SQLITE_CONSTRAINT') {
+        throw new SlotConflictError();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Đặt lịch khám bệnh mới V1
    */
   async bookAppointment(payload) {
     const { clinic_id, doctor_id, patient_id, slot_time } = payload;
 
-    // 1. Nghiệp vụ: Kiểm tra bác sĩ có công tác tại đúng chi nhánh tiếp nhận không
+    // 1. Kiểm tra bác sĩ có công tác tại đúng chi nhánh tiếp nhận không
     const doctor = await this.appointmentRepository.findDoctorById(clinic_id, doctor_id);
     if (!doctor) {
       throw new NotFoundError(
@@ -32,7 +73,7 @@ class AppointmentService {
       );
     }
 
-    // 2. Nghiệp vụ: Ngăn chặn một bệnh nhân đặt trùng 2 ca khám cùng lúc
+    // 2. Ngăn chặn một bệnh nhân đặt trùng 2 ca khám cùng lúc
     const isDoubleBooked = await this.appointmentRepository.checkPatientDoubleBooking(
       clinic_id,
       patient_id,
@@ -54,22 +95,15 @@ class AppointmentService {
         specialty: doctor.specialty
       };
     } catch (error) {
-      // XỬ LÝ DỰ PHÒNG RACE CONDITION TẦNG CSDL (Optimistic Fallback):
-      // Nếu 2 transaction cùng lọt qua lock hoặc xảy ra va chạm index unique_doctor_slot (doctor_id, slot_time)
       if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
         throw new ConflictError('Khung giờ này của bác sĩ vừa được một người khác hoàn tất đặt trước!');
       }
-
-      // Ném lại các lỗi khác (ConflictError từ Pessimistic lock, lỗi kết nối, v.v.)
       throw error;
     }
   }
 
   /**
    * Lấy danh sách lịch hẹn khám kèm phân trang
-   * @param {number|string} clinicId 
-   * @param {Object} rawQuery 
-   * @returns {Promise<{ data: Array<Object>, pagination: Object }>}
    */
   async getAppointments(clinicId, rawQuery = {}) {
     const validatedQuery = validateAppointmentQuery(rawQuery);
@@ -96,4 +130,9 @@ class AppointmentService {
   }
 }
 
+AppointmentService.SlotConflictError = SlotConflictError;
+AppointmentService.AppointmentService = AppointmentService;
+
 module.exports = AppointmentService;
+module.exports.AppointmentService = AppointmentService;
+module.exports.SlotConflictError = SlotConflictError;

@@ -8,6 +8,57 @@ const PatientRepository = require('./patient.repository');
  * tags:
  *   - name: Patients (TV2 - Sharding & Profile Management)
  *     description: 'Quản lý hồ sơ bệnh nhân, định tuyến Sharding Key & Tra cứu Cross-Node (Thành viên 2)'
+ *   - name: Patients
+ *     description: 'Tương thích ngược API Bệnh nhân baseline'
+ * 
+ * /patients:
+ *   post:
+ *     tags: [Patients]
+ *     summary: Tạo mới hồ sơ bệnh nhân
+ *     responses:
+ *       201:
+ *         description: Tạo mới thành công
+ *   get:
+ *     tags: [Patients]
+ *     summary: Lấy danh sách bệnh nhân
+ *     responses:
+ *       200:
+ *         description: Lấy danh sách thành công
+ * 
+ * /patients/{id}:
+ *   get:
+ *     tags: [Patients]
+ *     summary: Lấy chi tiết hồ sơ bệnh nhân
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Lấy chi tiết thành công
+ *   put:
+ *     tags: [Patients]
+ *     summary: Cập nhật hồ sơ bệnh nhân
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Cập nhật thành công
+ *   delete:
+ *     tags: [Patients]
+ *     summary: Xóa hồ sơ bệnh nhân
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Xóa thành công
  * 
  * /v1/patients:
  *   post:
@@ -151,9 +202,26 @@ function createPatientV1Routes(service) {
   const patientService = service || new PatientService(new PatientRepository());
   const controller = createPatientController(patientService);
 
-  router.post('/', controller.createPatient);
+  router.post('/', (req, res, next) => controller.createPatientV1(req, res, next));
+  router.get('/', (req, res, next) => controller.getPatientsV1(req, res, next));
+  router.get('/:id', (req, res, next) => controller.getPatientDetail(req, res, next));
+
+  return router;
+}
+
+const { validateCreatePatient, validateUpdatePatient } = require('./patient.dto');
+
+function createPatientRoutes(service) {
+  const router = express.Router();
+  const patientService = service || new PatientService(new PatientRepository());
+  const controller = createPatientController(patientService);
+
+  router.post('/', validateCreatePatient, controller.createPatient);
   router.get('/', controller.getPatients);
-  router.get('/:id', controller.getPatientDetail);
+  router.get('/search/distributed', controller.getPatients);
+  router.get('/:id', controller.getPatientById);
+  router.put('/:id', validateUpdatePatient, controller.updatePatient);
+  router.delete('/:id', controller.deletePatient);
 
   return router;
 }
@@ -163,7 +231,12 @@ const defaultService = new PatientService(defaultRepository);
 const defaultRouter = createPatientV1Routes(defaultService);
 
 defaultRouter.createPatientV1Routes = createPatientV1Routes;
+defaultRouter.createPatientRoutes = createPatientRoutes;
 defaultRouter.PatientService = PatientService;
 defaultRouter.PatientRepository = PatientRepository;
 
 module.exports = defaultRouter;
+module.exports.createPatientV1Routes = createPatientV1Routes;
+module.exports.createPatientRoutes = createPatientRoutes;
+module.exports.PatientService = PatientService;
+module.exports.PatientRepository = PatientRepository;

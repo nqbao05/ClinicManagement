@@ -1,5 +1,5 @@
 const createApp = require('./app');
-const { initDb } = require('./database/initDb');
+const { initDb } = require('../scripts/initDb');
 
 const port = Number(process.env.PORT) || 3000;
 const app = createApp();
@@ -10,7 +10,6 @@ async function startServer() {
 
   app.listen(port, () => {
     console.log(`Clinic System listening on http://localhost:${port}`);
-    console.log(`Login Portal (TV1): http://localhost:${port}/login`);
     console.log(`Patient UI (TV2): http://localhost:${port}/patients`);
     console.log(`Appointments UI (TV3): http://localhost:${port}/appointments`);
     console.log(`Dashboard UI (TV4): http://localhost:${port}/dashboard`);

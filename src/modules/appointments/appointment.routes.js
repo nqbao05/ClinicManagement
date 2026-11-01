@@ -8,9 +8,51 @@ const AppointmentRepository = require('./appointment.repository');
  * tags:
  *   - name: Appointments (V1)
  *     description: 'Quản lý Đặt lịch khám bệnh & Concurrency Control (Thành viên 3)'
+ *   - name: Appointments
+ *     description: 'Tương thích ngược API Đặt lịch khám baseline'
  * 
  * components:
  *   schemas:
+ *     CreateAppointmentRequest:
+ *       type: object
+ *       required:
+ *         - patientId
+ *         - doctorId
+ *         - clinicId
+ *         - slotTime
+ *       properties:
+ *         patientId:
+ *           type: integer
+ *           example: 1
+ *         doctorId:
+ *           type: integer
+ *           example: 1
+ *         clinicId:
+ *           type: integer
+ *           example: 1
+ *         slotTime:
+ *           type: string
+ *           format: date-time
+ *           example: '2026-11-01T09:00:00.000Z'
+ * 
+ *     Appointment:
+ *       type: object
+ *       properties:
+ *         appointment_id:
+ *           type: integer
+ *         patient_id:
+ *           type: integer
+ *         doctor_id:
+ *           type: integer
+ *         clinic_id:
+ *           type: integer
+ *         slot_time:
+ *           type: string
+ *           format: date-time
+ *         status:
+ *           type: string
+ *           enum: [Pending, Confirmed, Cancelled]
+ * 
  *     BookAppointmentRequest:
  *       type: object
  *       required:
@@ -104,6 +146,57 @@ const AppointmentRepository = require('./appointment.repository');
  *               type: boolean
  *               example: false
  */
+
+/**
+ * @openapi
+ * /appointments:
+ *   post:
+ *     tags: [Appointments]
+ *     summary: Tạo lịch khám
+ *     description: Tạo lịch khám với bảo vệ chống đặt trùng slot giữa các bác sĩ và thời điểm.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/CreateAppointmentRequest'
+ *     responses:
+ *       201:
+ *         description: Đặt lịch thành công
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Appointment'
+ *       400:
+ *         description: Dữ liệu không hợp lệ
+ *       409:
+ *         description: Khung giờ đã được đặt
+ *       500:
+ *         description: Lỗi máy chủ
+ */
+function createAppointmentRoutes(service) {
+  const router = express.Router();
+  router.post('/appointments', async (req, res, next) => {
+    try {
+      const appointment = await Promise.resolve(service.createBooking({
+        patientId: req.body.patientId,
+        doctorId: req.body.doctorId,
+        clinicId: req.body.clinicId,
+        slotTime: req.body.slotTime
+      }));
+      res.status(201).json(appointment);
+    } catch (error) {
+      if (error.code === 'APPOINTMENT_SLOT_CONFLICT' || error.statusCode === 409) {
+        return res.status(409).json({ code: error.code || 'APPOINTMENT_SLOT_CONFLICT', message: error.message });
+      }
+      if (error.code === 'INVALID_SLOT_TIME' || error.statusCode === 400) {
+        return res.status(400).json({ code: error.code, message: error.message });
+      }
+      return next(error);
+    }
+  });
+  return router;
+}
 
 /**
  * Khởi tạo Express Router cho Appointments V1
@@ -239,7 +332,12 @@ const defaultService = new AppointmentService(defaultRepository);
 const defaultRouter = createAppointmentV1Routes(defaultService);
 
 defaultRouter.createAppointmentV1Routes = createAppointmentV1Routes;
+defaultRouter.createAppointmentRoutes = createAppointmentRoutes;
 defaultRouter.AppointmentService = AppointmentService;
 defaultRouter.AppointmentRepository = AppointmentRepository;
 
 module.exports = defaultRouter;
+module.exports.createAppointmentV1Routes = createAppointmentV1Routes;
+module.exports.createAppointmentRoutes = createAppointmentRoutes;
+module.exports.AppointmentService = AppointmentService;
+module.exports.AppointmentRepository = AppointmentRepository;

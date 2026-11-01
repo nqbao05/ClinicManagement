@@ -2,6 +2,22 @@ const { validateCreatePatient, validatePatientSearchQuery } = require('./patient
 const ConflictError = require('../../common/errors/conflict.error');
 const NotFoundError = require('../../common/errors/not-found.error');
 
+class PatientNotFoundError extends NotFoundError {
+  constructor(message = 'Không tìm thấy hồ sơ bệnh nhân') {
+    super(message);
+    this.name = 'NotFoundError';
+    this.code = 'PATIENT_NOT_FOUND';
+  }
+}
+
+class DuplicatePatientError extends ConflictError {
+  constructor(message = 'Hồ sơ bệnh nhân với số CCCD này đã tồn tại trong hệ thống') {
+    super(message);
+    this.name = 'DuplicatePatientError';
+    this.code = 'PATIENT_DUPLICATE_IDENTITY_CARD';
+  }
+}
+
 /**
  * Service Layer: Xử lý nghiệp vụ quản lý bệnh nhân, định tuyến ghi theo Sharding Key
  * và thực thi tìm kiếm phân tán chịu lỗi (Cross-Node Distributed Lookup).
@@ -9,33 +25,133 @@ const NotFoundError = require('../../common/errors/not-found.error');
 class PatientService {
   /**
    * @param {Object} patientRepository - Instance của PatientRepository
+   * @param {Object} [options]
    */
-  constructor(patientRepository) {
+  constructor(patientRepository, options = {}) {
     this.patientRepository = patientRepository;
+    this.currentClinicId = Number(options.currentClinicId || process.env.CURRENT_CLINIC_ID || 1);
   }
 
-  /**
-   * Đăng ký mới hồ sơ bệnh nhân và lưu vào đúng Node CSDL theo Sharding Key
-   * @param {Object} rawData - Dữ liệu client gửi lên
-   * @returns {Promise<Object>} Hồ sơ bệnh nhân đã tạo
-   */
+  // --- Các phương thức chuẩn baseline & PRD (tests/patient.test.js & tests/unit/patient.service.test.js) ---
+
+  async create(patientData) {
+    const existing = await this.patientRepository.findByIdentityCard(patientData.identity_card);
+    if (existing) {
+      throw new DuplicatePatientError(
+        `Bệnh nhân có số CCCD/CMND ${patientData.identity_card} đã tồn tại ở chi nhánh ${existing.origin_clinic_id}`
+      );
+    }
+
+    const createdPatient = await this.patientRepository.create(patientData);
+    return typeof createdPatient.toJSON === 'function' ? createdPatient.toJSON() : createdPatient;
+  }
+
+  async findAll(filter = {}, activeClinicId = null) {
+    const effectiveClinicId = Number(activeClinicId || this.currentClinicId);
+    const patients = await this.patientRepository.findAll(filter);
+
+    return patients.map((patient) => {
+      const data = typeof patient.toJSON === 'function' ? patient.toJSON() : patient;
+      const isExternal = data.origin_clinic_id !== effectiveClinicId;
+      return {
+        ...data,
+        is_external_record: isExternal
+      };
+    });
+  }
+
+  async findById(id, activeClinicId = null) {
+    const effectiveClinicId = Number(activeClinicId || this.currentClinicId);
+    const patient = await this.patientRepository.findById(id);
+
+    if (!patient) {
+      throw new PatientNotFoundError(`Không tìm thấy hồ sơ bệnh nhân với mã ID: ${id}`);
+    }
+
+    const data = typeof patient.toJSON === 'function' ? patient.toJSON() : patient;
+    const isExternal = data.origin_clinic_id !== effectiveClinicId;
+
+    return {
+      ...data,
+      is_external_record: isExternal,
+      ...(isExternal
+        ? {
+            source_node: data.origin_clinic_id === 1 ? 'Node Hà Nội' : 'Node TP.HCM',
+            sync_notice: `Dữ liệu được đồng bộ từ Cơ sở ${data.origin_clinic_id === 1 ? 'Hà Nội' : 'TP.HCM'}`
+          }
+        : {})
+    };
+  }
+
+  async findByIdentityCard(identityCard, activeClinicId = null) {
+    const effectiveClinicId = Number(activeClinicId || this.currentClinicId);
+    const patient = await this.patientRepository.findByIdentityCard(identityCard);
+
+    if (!patient) {
+      throw new PatientNotFoundError(`Không tìm thấy hồ sơ bệnh nhân có số CCCD/CMND: ${identityCard}`);
+    }
+
+    const data = typeof patient.toJSON === 'function' ? patient.toJSON() : patient;
+    const isExternal = data.origin_clinic_id !== effectiveClinicId;
+
+    return {
+      ...data,
+      is_external_record: isExternal,
+      ...(isExternal
+        ? {
+            source_node: data.origin_clinic_id === 1 ? 'Node Hà Nội' : 'Node TP.HCM',
+            sync_notice: `Dữ liệu được đồng bộ từ Cơ sở ${data.origin_clinic_id === 1 ? 'Hà Nội' : 'TP.HCM'}`
+          }
+        : {})
+    };
+  }
+
+  async update(id, updateData) {
+    const existing = await this.patientRepository.findById(id);
+    if (!existing) {
+      throw new PatientNotFoundError(`Không tìm thấy hồ sơ bệnh nhân để cập nhật với ID: ${id}`);
+    }
+
+    if (updateData.identity_card && updateData.identity_card !== existing.identity_card) {
+      const duplicate = await this.patientRepository.findByIdentityCard(updateData.identity_card);
+      if (duplicate && duplicate.patient_id !== existing.patient_id) {
+        throw new DuplicatePatientError(`Số CCCD/CMND ${updateData.identity_card} đã được sử dụng bởi bệnh nhân khác`);
+      }
+    }
+
+    const updated = await this.patientRepository.update(id, updateData);
+    return typeof updated.toJSON === 'function' ? updated.toJSON() : updated;
+  }
+
+  async remove(id) {
+    const existing = await this.patientRepository.findById(id);
+    if (!existing) {
+      throw new PatientNotFoundError(`Không tìm thấy hồ sơ bệnh nhân để xóa với ID: ${id}`);
+    }
+
+    await this.patientRepository.delete(id);
+    return {
+      success: true,
+      deleted_patient_id: Number(id),
+      message: 'Đã xóa hồ sơ bệnh nhân thành công'
+    };
+  }
+
+  // --- Các phương thức RESTful V1 ---
+
   async registerPatient(rawData) {
-    // 1. Xác thực và chuẩn hóa dữ liệu đầu vào theo DTO
     const data = validateCreatePatient(rawData);
     const clinicId = data.origin_clinic_id;
 
-    // 2. Kiểm tra số CCCD đã tồn tại tại cơ sở đó chưa
     const existing = await this.patientRepository.findByCitizenId(clinicId, data.citizen_id);
     if (existing) {
       throw new ConflictError('Số CCCD này đã được đăng ký hồ sơ tại cơ sở!');
     }
 
-    // 3. Thực thi ghi dữ liệu vào Node CSDL tương ứng
     try {
       const createdPatient = await this.patientRepository.createPatient(clinicId, data);
       return createdPatient;
     } catch (error) {
-      // Bắt lỗi Unique Constraint từ MySQL (ER_DUP_ENTRY / 1062)
       if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
         throw new ConflictError('Số CCCD này đã được đăng ký hồ sơ tại cơ sở!');
       }
@@ -43,12 +159,6 @@ class PatientService {
     }
   }
 
-  /**
-   * Tra cứu chi tiết bệnh nhân theo ID và chi nhánh gốc (Dùng cho nội bộ & TV3)
-   * @param {number|string} patientId - Mã bệnh nhân
-   * @param {number|string} [originClinicId] - Mã cơ sở gốc (1 hoặc 2)
-   * @returns {Promise<Object>}
-   */
   async getPatientByIdAndOrigin(patientId, originClinicId) {
     if (originClinicId && [1, 2].includes(Number(originClinicId))) {
       const patient = await this.patientRepository.findById(Number(originClinicId), patientId);
@@ -58,7 +168,6 @@ class PatientService {
       return patient;
     }
 
-    // Nếu không truyền originClinicId, quét tuần tự hoặc song song trên cả 2 node
     const [p1, p2] = await Promise.all([
       this.patientRepository.findById(1, patientId).catch(() => null),
       this.patientRepository.findById(2, patientId).catch(() => null)
@@ -72,16 +181,10 @@ class PatientService {
     return found;
   }
 
-  /**
-   * Tra cứu danh sách bệnh nhân phân tán chịu lỗi (Cross-Node Lookup)
-   * @param {Object} rawQuery - { citizen_id, phone_number, clinic_id, page, limit }
-   * @returns {Promise<{ data: Array, pagination: Object }>}
-   */
   async searchPatients(rawQuery = {}) {
     const validatedQuery = validatePatientSearchQuery(rawQuery);
     const { clinic_id, page, limit } = validatedQuery;
 
-    // Kịch bản 1: Client chỉ định cụ thể chi nhánh cần truy vấn
     if (clinic_id) {
       const { rows, total } = await this.patientRepository.listPatients(clinic_id, validatedQuery);
       return {
@@ -95,7 +198,6 @@ class PatientService {
       };
     }
 
-    // Kịch bản 2: Client không chỉ định chi nhánh -> Quét phân tán song song đa Node (Fault-Tolerant Parallel Scan)
     const [hanoiResult, hcmResult] = await Promise.allSettled([
       this.patientRepository.listPatients(1, validatedQuery),
       this.patientRepository.listPatients(2, validatedQuery)
@@ -114,7 +216,6 @@ class PatientService {
       combinedTotal += hcmResult.value.total || 0;
     }
 
-    // Sắp xếp tổng hợp giảm dần theo thời gian tạo / ID
     combinedRows.sort((a, b) => (b.patient_id || 0) - (a.patient_id || 0));
 
     return {
@@ -127,6 +228,17 @@ class PatientService {
       }
     };
   }
+
+  async getPatientDetail(patientId, clinicId = null) {
+    return this.getPatientByIdAndOrigin(patientId, clinicId);
+  }
 }
 
+PatientService.PatientService = PatientService;
+PatientService.NotFoundError = PatientNotFoundError;
+PatientService.DuplicatePatientError = DuplicatePatientError;
+
 module.exports = PatientService;
+module.exports.PatientService = PatientService;
+module.exports.NotFoundError = PatientNotFoundError;
+module.exports.DuplicatePatientError = DuplicatePatientError;

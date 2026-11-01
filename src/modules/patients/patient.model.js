@@ -16,6 +16,8 @@ class Patient {
     gender = 'Other',
     date_of_birth = null,
     address = null,
+    blood_type = null,
+    medical_history = null,
     created_at = null,
     updated_at = null
   } = {}) {
@@ -28,6 +30,8 @@ class Patient {
     this.gender = gender || 'Other';
     this.date_of_birth = date_of_birth || null;
     this.address = address || null;
+    this.blood_type = blood_type || null;
+    this.medical_history = medical_history || null;
     this.created_at = created_at || new Date().toISOString();
     this.updated_at = updated_at || new Date().toISOString();
   }
@@ -46,6 +50,8 @@ class Patient {
       gender: this.gender,
       date_of_birth: this.date_of_birth,
       address: this.address,
+      blood_type: this.blood_type,
+      medical_history: this.medical_history,
       created_at: this.created_at,
       updated_at: this.updated_at
     };
@@ -59,31 +65,29 @@ class Patient {
   static fromDatabaseRow(row) {
     if (!row) return null;
 
-    // Ánh xạ Enum tiếng Việt từ MySQL (Nam/Nu/Khac) sang English DTO (Male/Female/Other)
-    let gender = 'Other';
-    if (row.gender === 'Nam' || row.gender === 'Male') gender = 'Male';
-    else if (row.gender === 'Nu' || row.gender === 'Female') gender = 'Female';
-
-    let dob = row.date_of_birth;
-    if (dob instanceof Date) {
-      const y = dob.getFullYear();
-      const m = String(dob.getMonth() + 1).padStart(2, '0');
-      const d = String(dob.getDate()).padStart(2, '0');
-      dob = `${y}-${m}-${d}`;
+    let dob = null;
+    if (row.date_of_birth) {
+      if (row.date_of_birth instanceof Date) {
+        dob = row.date_of_birth.toISOString().split('T')[0];
+      } else {
+        dob = String(row.date_of_birth).split('T')[0];
+      }
     }
 
     return new Patient({
       patient_id: row.patient_id,
       origin_clinic_id: row.origin_clinic_id,
-      citizen_id: row.identity_card || row.citizen_id,
+      citizen_id: row.citizen_id || row.identity_card,
       identity_card: row.identity_card || row.citizen_id,
       full_name: row.full_name,
       phone_number: row.phone_number,
-      gender,
+      gender: row.gender,
       date_of_birth: dob,
       address: row.address,
-      created_at: row.created_at,
-      updated_at: row.updated_at
+      blood_type: row.blood_type,
+      medical_history: row.medical_history,
+      created_at: row.created_at ? new Date(row.created_at).toISOString() : null,
+      updated_at: row.updated_at ? new Date(row.updated_at).toISOString() : null
     });
   }
 }

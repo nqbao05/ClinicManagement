@@ -42,9 +42,9 @@ const expect = typeof globalThis.expect !== 'undefined' ? globalThis.expect : (a
   }
 });
 
-const { PatientService, NotFoundError, DuplicatePatientError } = require('../../src/services/patient.service');
-const { GatewayTimeoutError } = require('../../src/repositories/patient.repository');
-const Patient = require('../../src/models/patient.model');
+const { PatientService, NotFoundError, DuplicatePatientError } = require('../../src/modules/patients/patient.service');
+const { GatewayTimeoutError } = require('../../src/modules/patients/patient.repository');
+const Patient = require('../../src/modules/patients/patient.model');
 
 describe('PatientService - Unit Tests (Clean Architecture & PRD Scenarios)', () => {
   let service;

@@ -1,5 +1,6 @@
 const { getDbPool } = require('../../config/database');
 const ConflictError = require('../../common/errors/conflict.error');
+const Appointment = require('./appointment.model');
 
 /**
  * Repository tương tác dữ liệu Lịch hẹn khám bệnh (Appointments)
@@ -12,7 +13,46 @@ class AppointmentRepository {
    * @param {Function} [options.poolResolver] - Hàm định tuyến Connection Pool theo clinicId
    */
   constructor(options = {}) {
-    this.poolResolver = options.poolResolver || getDbPool;
+    if (options && typeof options.prepare === 'function') {
+      this.db = options;
+    } else if (options && options.db) {
+      this.db = options.db;
+    }
+    this.poolResolver = (options && options.poolResolver) || getDbPool;
+
+    if (this.db) {
+      this.createInTransaction = this.db.transaction((appointment) => {
+        const result = this.db.prepare(`
+          INSERT INTO appointments (patient_id, doctor_id, clinic_id, slot_time, status)
+          VALUES (@patient_id, @doctor_id, @clinic_id, @slot_time, @status)
+        `).run({
+          patient_id: appointment.patient_id,
+          doctor_id: appointment.doctor_id,
+          clinic_id: appointment.clinic_id,
+          slot_time: appointment.slot_time,
+          status: appointment.status
+        });
+        return new Appointment({ ...appointment, appointment_id: result.lastInsertRowid });
+      });
+    }
+  }
+
+  create(appointment) {
+    if (this.createInTransaction) {
+      return this.createInTransaction(appointment);
+    }
+    throw new Error('create() chỉ dùng với memory database instance');
+  }
+
+  findActiveByDoctorAndSlot(doctorId, slotTime) {
+    if (!this.db) return null;
+    const row = this.db.prepare(`
+      SELECT appointment_id, patient_id, doctor_id, clinic_id, slot_time, status
+      FROM appointments
+      WHERE doctor_id = ? AND slot_time = ? AND status <> 'Cancelled'
+      LIMIT 1
+    `).get(doctorId, slotTime);
+    return row ? new Appointment(row) : null;
   }
 
   /**
@@ -61,27 +101,14 @@ class AppointmentRepository {
 
   /**
    * Tạo lịch hẹn khám bệnh bọc trong Database Transaction với cơ chế Pessimistic Lock
-   * Luồng thực thi:
-   * 1. conn.beginTransaction()
-   * 2. SELECT ... FOR UPDATE (Khóa dòng chống xung đột đồng thời)
-   * 3. INSERT INTO appointments
-   * 4. conn.commit()
-   * 5. conn.release() (Đảm bảo luôn giải phóng kết nối về pool)
-   * 
-   * @param {number|string} clinicId 
-   * @param {Object} data - { patient_id, doctor_id, clinic_id, slot_time }
-   * @returns {Promise<Object>}
    */
   async createAppointmentWithTransaction(clinicId, data) {
     const pool = this._getPool(clinicId);
     const conn = await pool.getConnection();
 
     try {
-      // 1. Mở Transaction
       await conn.beginTransaction();
 
-      // 2. Pessimistic Lock / Slot Check: Khóa dòng kiểm tra trước
-      // Sử dụng FOR UPDATE để chặn bất kỳ transaction nào khác đọc hoặc sửa cùng khung giờ của bác sĩ
       const [existingSlots] = await conn.query(
         `SELECT appointment_id 
          FROM appointments 
@@ -94,14 +121,12 @@ class AppointmentRepository {
         throw new ConflictError('Khung giờ này của bác sĩ vừa có người đặt trước!');
       }
 
-      // 3. Thực thi chèn lịch hẹn mới
       const [insertResult] = await conn.query(
         `INSERT INTO appointments (patient_id, doctor_id, clinic_id, slot_time, status) 
          VALUES (?, ?, ?, ?, 'Pending')`,
         [Number(data.patient_id), Number(data.doctor_id), Number(clinicId), data.slot_time]
       );
 
-      // 4. Commit Transaction an toàn
       await conn.commit();
 
       return {
@@ -114,23 +139,18 @@ class AppointmentRepository {
         created_at: new Date().toISOString()
       };
     } catch (error) {
-      // Rollback hoàn tác mọi thay đổi nếu xảy ra lỗi
       await conn.rollback();
       if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
         throw new ConflictError('Khung giờ này của bác sĩ vừa có người đặt trước!');
       }
       throw error;
     } finally {
-      // Bắt buộc giải phóng kết nối về Pool để tránh connection leak
       conn.release();
     }
   }
 
   /**
    * Lấy danh sách lịch hẹn có phân trang và bộ lọc linh hoạt
-   * @param {number|string} clinicId 
-   * @param {Object} filters 
-   * @returns {Promise<{ rows: Array<Object>, total: number }>}
    */
   async findAppointments(clinicId, filters = {}) {
     const pool = this._getPool(clinicId);
@@ -153,14 +173,12 @@ class AppointmentRepository {
       params.push(filters.date);
     }
 
-    // 1. Đếm tổng số bản ghi
     const [countRows] = await pool.query(
       `SELECT COUNT(*) AS total FROM appointments a ${whereClause}`,
       params
     );
     const total = Number(countRows[0].total) || 0;
 
-    // 2. Truy vấn dữ liệu phân trang kèm thông tin bác sĩ & bệnh nhân
     const limit = Number(filters.limit) || 20;
     const offset = Number(filters.offset) || 0;
     const queryParams = [...params, limit, offset];
@@ -177,7 +195,7 @@ class AppointmentRepository {
        ORDER BY a.slot_time DESC
        LIMIT ? OFFSET ?`,
       queryParams
-     );
+    );
 
     return { rows, total };
   }
