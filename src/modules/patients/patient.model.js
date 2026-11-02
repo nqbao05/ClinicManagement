@@ -1,3 +1,5 @@
+const { decrypt } = require('../../common/utils/crypto.util');
+
 /**
  * Domain Entity đại diện cho Bệnh nhân (Patient Entity)
  * Tuân thủ Clean Architecture: Độc lập với HTTP Framework & CSDL
@@ -74,13 +76,23 @@ class Patient {
       }
     }
 
+    let citizenId = row.citizen_id || row.identity_card || '';
+    if (row.citizen_id_encrypted) {
+      citizenId = decrypt(row.citizen_id_encrypted);
+    }
+
+    let phoneNumber = row.phone_number || '';
+    if (row.phone_encrypted) {
+      phoneNumber = decrypt(row.phone_encrypted);
+    }
+
     return new Patient({
-      patient_id: row.patient_id,
+      patient_id: row.id || row.patient_id,
       origin_clinic_id: row.origin_clinic_id,
-      citizen_id: row.citizen_id || row.identity_card,
-      identity_card: row.identity_card || row.citizen_id,
+      citizen_id: citizenId,
+      identity_card: citizenId,
       full_name: row.full_name,
-      phone_number: row.phone_number,
+      phone_number: phoneNumber,
       gender: row.gender,
       date_of_birth: dob,
       address: row.address,

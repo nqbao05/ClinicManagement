@@ -20,11 +20,12 @@ class DoctorRepository {
    */
   async findById(clinicId, doctorId) {
     const pool = this.poolResolver(clinicId);
+    const dId = Number(doctorId);
     const [rows] = await pool.query(
-      `SELECT doctor_id, clinic_id, full_name, specialty, created_at 
+      `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, created_at 
        FROM doctors 
-       WHERE doctor_id = ? AND clinic_id = ? LIMIT 1`,
-      [Number(doctorId), Number(clinicId)]
+       WHERE (id = ? OR doctor_id = ?) AND clinic_id = ? LIMIT 1`,
+      [dId, dId, Number(clinicId)]
     );
     return rows[0] || null;
   }
@@ -37,7 +38,7 @@ class DoctorRepository {
    */
   async findByClinic(clinicId, specialty) {
     const pool = this.poolResolver(clinicId);
-    let sql = `SELECT doctor_id, clinic_id, full_name, specialty, created_at FROM doctors WHERE clinic_id = ?`;
+    let sql = `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, created_at FROM doctors WHERE clinic_id = ?`;
     const params = [Number(clinicId)];
 
     if (specialty) {
@@ -45,7 +46,7 @@ class DoctorRepository {
       params.push(specialty);
     }
 
-    sql += ` ORDER BY doctor_id ASC`;
+    sql += ` ORDER BY id ASC`;
     const [rows] = await pool.query(sql, params);
     return rows;
   }

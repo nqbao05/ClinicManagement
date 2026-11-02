@@ -11,6 +11,7 @@ const {
   authorizePatientSelf
 } = require('../src/common/middlewares/auth.middleware');
 const { UnauthorizedError, ForbiddenError } = require('../src/common/errors');
+const { closeAllPools } = require('../src/config/database');
 
 test('RBAC Middleware - Unit Tests', async (t) => {
   await t.test('authenticate: từ chối khi không có token (chế độ bắt buộc x-enforce-auth)', () => {
@@ -88,6 +89,9 @@ test('RBAC Middleware - Unit Tests', async (t) => {
 });
 
 test('RBAC HTTP Endpoints - Integration Tests', async (t) => {
+  t.after(async () => {
+    await closeAllPools();
+  });
   const app = createApp();
 
   const adminToken = signToken({ user_id: 1, role: 'admin', clinic_id: 1 });

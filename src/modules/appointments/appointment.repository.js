@@ -1,5 +1,6 @@
 const { getDbPool } = require('../../config/database');
 const ConflictError = require('../../common/errors/conflict.error');
+const { decrypt } = require('../../common/utils/crypto.util');
 const Appointment = require('./appointment.model');
 
 /**
@@ -90,7 +91,7 @@ class AppointmentRepository {
   async checkPatientDoubleBooking(clinicId, patientId, slotTime) {
     const pool = this._getPool(clinicId);
     const [rows] = await pool.query(
-      `SELECT appointment_id 
+      `SELECT id, id AS appointment_id 
        FROM appointments 
        WHERE patient_id = ? AND slot_time = ? AND status != 'Cancelled' 
        LIMIT 1`,
@@ -110,7 +111,7 @@ class AppointmentRepository {
       await conn.beginTransaction();
 
       const [existingSlots] = await conn.query(
-        `SELECT appointment_id 
+        `SELECT id, id AS appointment_id 
          FROM appointments 
          WHERE doctor_id = ? AND slot_time = ? AND status != 'Cancelled' 
          FOR UPDATE`,
@@ -131,6 +132,7 @@ class AppointmentRepository {
 
       return {
         appointment_id: insertResult.insertId,
+        id: insertResult.insertId,
         patient_id: Number(data.patient_id),
         doctor_id: Number(data.doctor_id),
         clinic_id: Number(clinicId),
@@ -189,20 +191,26 @@ class AppointmentRepository {
     const queryParams = [...params, limit, offset];
 
     const [rows] = await pool.query(
-      `SELECT a.appointment_id, a.patient_id, a.doctor_id, a.clinic_id, 
+      `SELECT a.id, a.id AS appointment_id, a.patient_id, a.doctor_id, a.clinic_id, 
               a.slot_time, a.status, a.created_at,
               d.full_name AS doctor_name, d.specialty AS doctor_specialty,
-              p.full_name AS patient_name, p.phone_number AS patient_phone
+              p.full_name AS patient_name, p.phone_encrypted, p.phone_number AS patient_phone
        FROM appointments a
-       LEFT JOIN doctors d ON a.doctor_id = d.doctor_id
-       LEFT JOIN patients p ON a.patient_id = p.patient_id
+       LEFT JOIN doctors d ON (a.doctor_id = d.id OR a.doctor_id = d.doctor_id)
+       LEFT JOIN patients p ON (a.patient_id = p.id OR a.patient_id = p.patient_id)
        ${whereClause}
        ORDER BY a.slot_time DESC
        LIMIT ? OFFSET ?`,
       queryParams
     );
 
-    return { rows, total };
+    const mappedRows = rows.map((r) => ({
+      ...r,
+      appointment_id: r.appointment_id || r.id,
+      patient_phone: r.phone_encrypted ? decrypt(r.phone_encrypted) : r.patient_phone
+    }));
+
+    return { rows: mappedRows, total };
   }
 
   /**
@@ -212,11 +220,12 @@ class AppointmentRepository {
    */
   async findById(clinicId, appointmentId) {
     const pool = this.getPool(clinicId);
+    const aId = Number(appointmentId);
     const [rows] = await pool.query(
-      `SELECT appointment_id, patient_id, doctor_id, clinic_id, slot_time, status, created_at
+      `SELECT id, id AS appointment_id, patient_id, doctor_id, clinic_id, slot_time, status, created_at
        FROM appointments
-       WHERE appointment_id = ? LIMIT 1`,
-      [Number(appointmentId)]
+       WHERE id = ? OR appointment_id = ? LIMIT 1`,
+      [aId, aId]
     );
     return rows[0] || null;
   }
@@ -229,9 +238,10 @@ class AppointmentRepository {
    */
   async updateStatus(clinicId, appointmentId, status) {
     const pool = this.getPool(clinicId);
+    const aId = Number(appointmentId);
     await pool.query(
-      `UPDATE appointments SET status = ? WHERE appointment_id = ?`,
-      [status, Number(appointmentId)]
+      `UPDATE appointments SET status = ? WHERE id = ? OR appointment_id = ?`,
+      [status, aId, aId]
     );
     return this.findById(clinicId, appointmentId);
   }

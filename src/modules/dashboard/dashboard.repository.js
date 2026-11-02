@@ -42,10 +42,10 @@ class DashboardRepository {
 
     // 3. Thống kê lượt khám theo chuyên khoa (Loại trừ các ca bị hủy - Cancelled)
     const [specialtyRows] = await pool.query(
-      `SELECT d.specialty, COUNT(a.appointment_id) AS total_appointments 
+      `SELECT d.specialty, COUNT(a.id) AS total_appointments 
        FROM appointments a 
-       JOIN doctors d ON a.doctor_id = d.doctor_id 
-       WHERE a.slot_time >= ? AND a.slot_time <= ? AND a.status != 'Cancelled' 
+       JOIN doctors d ON (a.doctor_id = d.id OR a.doctor_id = d.doctor_id) 
+       WHERE a.slot_time >= ? AND a.slot_time <= ? AND a.status != 'Cancelled' AND a.status != 'cancelled'
        GROUP BY d.specialty`,
       [fromDatetime, toDatetime]
     );

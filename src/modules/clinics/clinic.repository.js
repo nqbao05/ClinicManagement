@@ -24,10 +24,10 @@ class ClinicRepository {
     try {
       const pool = this.poolResolver(id);
       const [rows] = await pool.query(
-        `SELECT clinic_id, name, address, phone, created_at 
+        `SELECT id, id AS clinic_id, name, address, phone, created_at 
          FROM clinics 
-         WHERE clinic_id = ? LIMIT 1`,
-        [id]
+         WHERE id = ? OR clinic_id = ? LIMIT 1`,
+        [id, id]
       );
       return rows[0] || null;
     } catch (error) {

@@ -182,6 +182,15 @@ class FallbackDatabase {
   }
 }
 
+async function closeAllPools() {
+  try {
+    await Promise.allSettled([
+      poolHanoi.end(),
+      poolHcm.end()
+    ]);
+  } catch (e) {}
+}
+
 function createDatabase() {
   return new FallbackDatabase();
 }
@@ -193,5 +202,6 @@ module.exports = {
   getDbNode,
   executeWithTransaction,
   healthCheckPools,
+  closeAllPools,
   createDatabase
 };

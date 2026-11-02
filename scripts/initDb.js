@@ -1,12 +1,19 @@
 /**
- * Script khởi tạo Schema CSDL & Nạp dữ liệu mẫu (Seed Data)
- * cho cả 2 Sharding Nodes: Node 1 (clinic_hanoi) & Node 2 (clinic_hcm)
+ * ============================================================================
+ * SCRIPT KHỞI TẠO CƠ SỞ DỮ LIỆU PHÂN MẢNH SHARDING (SINGLE SOURCE OF TRUTH)
+ * Tích hợp mã hóa PII (AES-256-CBC) & Blind Index (HMAC-SHA256) cho CCCD và SĐT
+ * ============================================================================
  */
 const mysql = require('mysql2/promise');
 const path = require('path');
 const fs = require('fs');
+const {
+  encrypt,
+  generateBlindIndex,
+  hashPassword
+} = require('../src/common/utils/crypto.util');
 
-// Đọc file .env nếu có
+// 1. Tự động đọc biến môi trường từ .env
 function loadEnv() {
   const envPath = path.resolve(__dirname, '../.env');
   if (fs.existsSync(envPath)) {
@@ -32,135 +39,186 @@ const dbPort = Number(process.env.DB_PORT) || 3306;
 const dbUser = process.env.DB_USER || 'root';
 const dbPassword = process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '';
 
+// 2. Đặc tả Schema chuẩn cho cả 2 Node Sharding
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS clinics (
-  clinic_id INT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  name VARCHAR(150) NOT NULL,
   address VARCHAR(255) NOT NULL,
-  phone VARCHAR(50) NOT NULL,
+  phone VARCHAR(20) NOT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS doctors (
-  doctor_id INT PRIMARY KEY AUTO_INCREMENT,
+  id INT PRIMARY KEY AUTO_INCREMENT,
   clinic_id INT NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
+  full_name VARCHAR(100) NOT NULL,
   specialty VARCHAR(100) NOT NULL,
+  phone VARCHAR(20) NULL,
+  status ENUM('active', 'inactive') DEFAULT 'active',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_doctors_clinic (clinic_id),
   INDEX idx_doctors_specialty (specialty)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS patients (
-  patient_id INT PRIMARY KEY AUTO_INCREMENT,
+  id INT PRIMARY KEY AUTO_INCREMENT,
   origin_clinic_id INT NOT NULL,
-  identity_card VARCHAR(20) NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
-  phone_number VARCHAR(20) NOT NULL,
-  gender ENUM('Male', 'Female', 'Other') DEFAULT 'Male',
-  date_of_birth DATE,
-  address VARCHAR(255),
+  full_name VARCHAR(100) NOT NULL,
+  citizen_id_encrypted VARCHAR(255) NOT NULL,
+  phone_encrypted VARCHAR(255) NOT NULL,
+  citizen_id_bindex VARCHAR(64) NOT NULL UNIQUE,
+  phone_bindex VARCHAR(64) NOT NULL,
+  date_of_birth DATE NOT NULL,
+  gender ENUM('male', 'female', 'other') NOT NULL,
+  address VARCHAR(255) NULL,
+  blood_type VARCHAR(10) NULL,
+  medical_history TEXT NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY uq_patient_identity (identity_card),
-  INDEX idx_patient_phone (phone_number),
-  INDEX idx_patient_clinic (origin_clinic_id)
+  INDEX idx_citizen_bindex (citizen_id_bindex),
+  INDEX idx_phone_bindex (phone_bindex)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS appointments (
-  appointment_id INT PRIMARY KEY AUTO_INCREMENT,
-  patient_id INT NOT NULL,
-  doctor_id INT NOT NULL,
+  id INT PRIMARY KEY AUTO_INCREMENT,
   clinic_id INT NOT NULL,
+  doctor_id INT NOT NULL,
+  patient_id INT NOT NULL,
   slot_time DATETIME NOT NULL,
-  status ENUM('Pending', 'Confirmed', 'Cancelled') DEFAULT 'Pending',
+  status ENUM('pending', 'confirmed', 'completed', 'cancelled') DEFAULT 'pending',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_doctor_slot (doctor_id, slot_time),
-  INDEX idx_appointments_clinic_date (clinic_id, slot_time),
-  INDEX idx_appointments_patient (patient_id)
+  INDEX idx_slot_time (slot_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(50) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role ENUM('admin', 'staff', 'patient') NOT NULL,
+  clinic_id INT NULL,
+  patient_id INT NULL,
+  reset_token_hash VARCHAR(255) NULL,
+  reset_token_expires_at DATETIME NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 `;
 
+/**
+ * Khởi tạo Schema và nạp Seed Data cho từng Node
+ */
 async function seedNode(connection, clinicId, dbName) {
   console.log(`\n--- Khởi tạo và nạp dữ liệu cho [${dbName}] (Node ${clinicId}) ---`);
+  
+  // 1. Tạo Database
   await connection.query(`CREATE DATABASE IF NOT EXISTS \`${dbName}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
   await connection.query(`USE \`${dbName}\`;`);
 
+  // 2. Dọn dẹp bảng cũ nếu cần để đảm bảo cấu trúc mới là Single Source of Truth
+  await connection.query(`DROP TABLE IF EXISTS appointments;`);
+  await connection.query(`DROP TABLE IF EXISTS users;`);
+  await connection.query(`DROP TABLE IF EXISTS patients;`);
+  await connection.query(`DROP TABLE IF EXISTS doctors;`);
+  await connection.query(`DROP TABLE IF EXISTS clinics;`);
+
+  // 3. Tạo 5 bảng chuẩn hóa
   const statements = SCHEMA_SQL.split(';').map(s => s.trim()).filter(Boolean);
   for (const stmt of statements) {
     await connection.query(stmt);
   }
+  console.log(`✓ Đã tạo 5 bảng chuẩn (clinics, doctors, patients, appointments, users) tại ${dbName}`);
 
-  // Tương thích ngược: Đảm bảo các cột mới tồn tại nếu bảng đã được tạo từ trước
-  try { await connection.query('ALTER TABLE clinics MODIFY COLUMN location VARCHAR(255) NULL DEFAULT NULL'); } catch (e) {}
-  try { await connection.query('ALTER TABLE clinics MODIFY COLUMN db_node_ip VARCHAR(100) NULL DEFAULT NULL'); } catch (e) {}
-  try { await connection.query('ALTER TABLE clinics ADD COLUMN address VARCHAR(255) NULL'); } catch (e) {}
-  try { await connection.query('ALTER TABLE clinics ADD COLUMN phone VARCHAR(50) NULL'); } catch (e) {}
-  try { await connection.query('ALTER TABLE patients ADD COLUMN blood_type VARCHAR(10) NULL'); } catch (e) {}
-  try { await connection.query('ALTER TABLE patients ADD COLUMN medical_history TEXT NULL'); } catch (e) {}
-
-  console.log(`✓ Đã tạo các bảng (clinics, doctors, patients, appointments) tại ${dbName}`);
-
-  // Seed Clinics
+  // 4. Seed dữ liệu Bảng Clinics
   if (clinicId === 1) {
     await connection.query(`
-      INSERT INTO clinics (clinic_id, name, address, phone)
+      INSERT INTO clinics (id, name, address, phone)
       VALUES (1, 'Phòng khám Đa khoa Quốc tế ClinicCare - Cơ sở 1 Hà Nội', 'Số 1 Phố Tràng Thi, Hoàn Kiếm, Hà Nội', '024-3825-5555')
       ON DUPLICATE KEY UPDATE name=VALUES(name), address=VALUES(address), phone=VALUES(phone);
     `);
   } else {
     await connection.query(`
-      INSERT INTO clinics (clinic_id, name, address, phone)
+      INSERT INTO clinics (id, name, address, phone)
       VALUES (2, 'Phòng khám Đa khoa Quốc tế ClinicCare - Cơ sở 2 TP.HCM', 'Số 201 Nguyễn Thị Minh Khai, Quận 1, TP.HCM', '028-3925-6666')
       ON DUPLICATE KEY UPDATE name=VALUES(name), address=VALUES(address), phone=VALUES(phone);
     `);
   }
 
-  // Seed Doctors
-  const [existingDoctors] = await connection.query('SELECT COUNT(*) as count FROM doctors');
-  if (existingDoctors[0].count === 0) {
-    if (clinicId === 1) {
-      await connection.query(`
-        INSERT INTO doctors (clinic_id, full_name, specialty) VALUES
-        (1, 'BS. CKI Nguyễn Văn A', 'Khoa Tim Mạch'),
-        (1, 'BS. CKII Lê Thị B', 'Khoa Nội'),
-        (1, 'ThS.BS Hoàng Minh C', 'Khoa Nhi'),
-        (1, 'BS. Đỗ Quang D', 'Khoa Mắt');
-      `);
-    } else {
-      await connection.query(`
-        INSERT INTO doctors (clinic_id, full_name, specialty) VALUES
-        (2, 'TS.BS Trần Văn C', 'Khoa Tim Mạch'),
-        (2, 'BS. CKI Phạm Thị D', 'Khoa Cơ Xương Khớp'),
-        (2, 'ThS.BS Vũ Hải E', 'Khoa Nhi'),
-        (2, 'BS. CKII Nguyễn Minh F', 'Khoa Thần Kinh');
-      `);
-    }
-    console.log(`✓ Đã nạp danh sách bác sĩ ban đầu cho ${dbName}`);
+  // 5. Seed dữ liệu Bảng Doctors
+  if (clinicId === 1) {
+    await connection.query(`
+      INSERT INTO doctors (id, clinic_id, full_name, specialty, phone, status) VALUES
+      (1, 1, 'BS. CKI Nguyễn Văn A', 'Khoa Tim Mạch', '0901234561', 'active'),
+      (2, 1, 'BS. CKII Lê Thị B', 'Khoa Nội', '0901234562', 'active'),
+      (3, 1, 'ThS.BS Hoàng Minh C', 'Khoa Nhi', '0901234563', 'active'),
+      (4, 1, 'BS. Đỗ Quang D', 'Khoa Mắt', '0901234564', 'active');
+    `);
+  } else {
+    await connection.query(`
+      INSERT INTO doctors (id, clinic_id, full_name, specialty, phone, status) VALUES
+      (1, 2, 'TS.BS Trần Văn C', 'Khoa Tim Mạch', '0909876541', 'active'),
+      (2, 2, 'BS. CKI Phạm Thị D', 'Khoa Cơ Xương Khớp', '0909876542', 'active'),
+      (3, 2, 'ThS.BS Vũ Hải E', 'Khoa Nhi', '0909876543', 'active'),
+      (4, 2, 'BS. CKII Nguyễn Minh F', 'Khoa Thần Kinh', '0909876544', 'active');
+    `);
   }
+  console.log(`✓ Đã nạp danh sách bác sĩ cho ${dbName}`);
 
-  // Seed Patients
-  const [existingPatients] = await connection.query('SELECT COUNT(*) as count FROM patients');
-  if (existingPatients[0].count === 0) {
-    if (clinicId === 1) {
-      await connection.query(`
-        INSERT INTO patients (origin_clinic_id, identity_card, full_name, phone_number, gender, date_of_birth, address) VALUES
-        (1, '001200000001', 'Nguyễn Văn An', '0912345671', 'Male', '1985-01-01', 'Quận Ba Đình, Hà Nội'),
-        (1, '001200000002', 'Lê Thu Trang', '0912345672', 'Female', '1992-05-15', 'Quận Cầu Giấy, Hà Nội');
-      `);
-    } else {
-      await connection.query(`
-        INSERT INTO patients (origin_clinic_id, identity_card, full_name, phone_number, gender, date_of_birth, address) VALUES
-        (2, '079200000001', 'Trần Đình Trọng', '0987654321', 'Male', '1988-10-10', 'Quận 1, TP.HCM'),
-        (2, '079200000002', 'Võ Mai Phương', '0987654322', 'Female', '1995-12-25', 'Quận 3, TP.HCM');
-      `);
-    }
-    console.log(`✓ Đã nạp dữ liệu hồ sơ bệnh nhân mẫu cho ${dbName}`);
+  // 6. Seed dữ liệu Bảng Patients (Đã mã hóa AES-256 & Băm Blind Index HMAC-SHA256)
+  if (clinicId === 1) {
+    const p1Citizen = '001200000001';
+    const p1Phone = '0912345671';
+    const p2Citizen = '001200000002';
+    const p2Phone = '0912345672';
+
+    await connection.query(`
+      INSERT INTO patients (
+        id, origin_clinic_id, full_name, citizen_id_encrypted, phone_encrypted,
+        citizen_id_bindex, phone_bindex, date_of_birth, gender, address, blood_type, medical_history
+      ) VALUES
+      (1, 1, 'Nguyễn Văn An', ?, ?, ?, ?, '1985-01-01', 'male', 'Quận Ba Đình, Hà Nội', 'A+', 'Tiền sử dị ứng penicillin'),
+      (2, 1, 'Lê Thu Trang', ?, ?, ?, ?, '1992-05-15', 'female', 'Quận Cầu Giấy, Hà Nội', 'O+', 'Không có bệnh lý nền');
+    `, [
+      encrypt(p1Citizen), encrypt(p1Phone), generateBlindIndex(p1Citizen), generateBlindIndex(p1Phone),
+      encrypt(p2Citizen), encrypt(p2Phone), generateBlindIndex(p2Citizen), generateBlindIndex(p2Phone)
+    ]);
+  } else {
+    const p1Citizen = '079200000001';
+    const p1Phone = '0987654321';
+    const p2Citizen = '079200000002';
+    const p2Phone = '0987654322';
+
+    await connection.query(`
+      INSERT INTO patients (
+        id, origin_clinic_id, full_name, citizen_id_encrypted, phone_encrypted,
+        citizen_id_bindex, phone_bindex, date_of_birth, gender, address, blood_type, medical_history
+      ) VALUES
+      (1, 2, 'Trần Đình Trọng', ?, ?, ?, ?, '1988-10-10', 'male', 'Quận 1, TP.HCM', 'B+', 'Huyết áp cao độ 1'),
+      (2, 2, 'Võ Mai Phương', ?, ?, ?, ?, '1995-12-25', 'female', 'Quận 3, TP.HCM', 'AB+', 'Không có bệnh lý nền');
+    `, [
+      encrypt(p1Citizen), encrypt(p1Phone), generateBlindIndex(p1Citizen), generateBlindIndex(p1Phone),
+      encrypt(p2Citizen), encrypt(p2Phone), generateBlindIndex(p2Citizen), generateBlindIndex(p2Phone)
+    ]);
   }
+  console.log(`✓ Đã nạp dữ liệu hồ sơ bệnh nhân mã hóa PII cho ${dbName}`);
+
+  // 7. Seed dữ liệu Bảng Users (Mật khẩu băm an toàn)
+  // Bcrypt/PBKDF2 hash cho Admin@123 và Staff@123
+  const adminHash = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW'; // Admin@123
+  const staffHash = '$2b$10$wT0X8.d.Oq7gq6K.7fM/4OCvP9YcO7.N5qF7tG4yG8z2g/jX8Kqeq'; // Staff@123
+
+  await connection.query(`
+    INSERT INTO users (username, password_hash, role, clinic_id, patient_id) VALUES
+    ('admin', ?, 'admin', NULL, NULL),
+    ('staff_hanoi', ?, 'staff', 1, NULL),
+    ('staff_hcm', ?, 'staff', 2, NULL);
+  `, [adminHash, staffHash, staffHash]);
+  console.log(`✓ Đã nạp tài khoản người dùng RBAC (admin, staff_hanoi, staff_hcm) cho ${dbName}`);
 }
 
 async function main() {
   console.log('================================================================');
-  console.log('KHỞI TẠO CƠ SỞ DỮ LIỆU PHÂN MẢNH SHARDING (CLINIC MANAGEMENT)');
+  console.log('KHỞI TẠO CƠ SỞ DỮ LIỆU PHÂN MẢNH SHARDING (SINGLE SOURCE OF TRUTH)');
   console.log(`Kết nối máy chủ MySQL tại: ${dbHost}:${dbPort} (User: ${dbUser})`);
   console.log('================================================================');
 

@@ -1,4 +1,5 @@
 const { getDbPool } = require('../../config/database');
+const { encrypt, decrypt, generateBlindIndex } = require('../../common/utils/crypto.util');
 const Patient = require('./patient.model');
 
 /**
@@ -189,12 +190,13 @@ class PatientRepository {
 
   async findByCitizenId(clinicId, citizenId) {
     const cccd = String(citizenId).trim();
+    const bindex = generateBlindIndex(cccd);
     if (!this.useMemory) {
       try {
         const pool = this.poolResolver(clinicId);
         const [rows] = await pool.query(
-          `SELECT * FROM patients WHERE identity_card = ? LIMIT 1`,
-          [cccd]
+          `SELECT * FROM patients WHERE citizen_id_bindex = ? OR identity_card = ? LIMIT 1`,
+          [bindex, cccd]
         );
         if (!rows || rows.length === 0) return null;
         const entity = Patient.fromDatabaseRow(rows[0]);
@@ -213,38 +215,46 @@ class PatientRepository {
 
   async createPatient(clinicId, data) {
     const cId = Number(clinicId);
-    let dbGender = 'Khac';
-    if (data.gender === 'Male' || data.gender === 'Nam') dbGender = 'Nam';
-    else if (data.gender === 'Female' || data.gender === 'Nu') dbGender = 'Nu';
+    let dbGender = 'other';
+    if (data.gender === 'Male' || data.gender === 'Nam' || data.gender === 'male') dbGender = 'male';
+    else if (data.gender === 'Female' || data.gender === 'Nu' || data.gender === 'female') dbGender = 'female';
 
     const citizenId = data.citizen_id || data.identity_card;
+    const phone = data.phone_number || data.phone || '';
+    const citizenEnc = encrypt(citizenId);
+    const phoneEnc = encrypt(phone);
+    const citizenBindex = generateBlindIndex(citizenId);
+    const phoneBindex = generateBlindIndex(phone);
 
     if (!this.useMemory) {
       try {
         const pool = this.poolResolver(cId);
         const [result] = await pool.query(
-          `INSERT INTO patients (origin_clinic_id, identity_card, full_name, phone_number, gender, date_of_birth, address) 
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO patients (origin_clinic_id, full_name, citizen_id_encrypted, phone_encrypted, citizen_id_bindex, phone_bindex, gender, date_of_birth, address) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             cId,
-            citizenId,
             data.full_name,
-            data.phone_number,
+            citizenEnc,
+            phoneEnc,
+            citizenBindex,
+            phoneBindex,
             dbGender,
             data.date_of_birth || null,
             data.address || null
           ]
         );
 
-        const [rows] = await pool.query(`SELECT * FROM patients WHERE patient_id = ?`, [result.insertId]);
+        const [rows] = await pool.query(`SELECT * FROM patients WHERE id = ? OR patient_id = ?`, [result.insertId, result.insertId]);
         const entity = Patient.fromDatabaseRow(rows[0]);
         return entity ? entity.toJSON() : {
           patient_id: result.insertId,
+          id: result.insertId,
           origin_clinic_id: cId,
           citizen_id: citizenId,
           identity_card: citizenId,
           full_name: data.full_name,
-          phone_number: data.phone_number,
+          phone_number: phone,
           gender: data.gender || 'Other',
           date_of_birth: data.date_of_birth,
           address: data.address || null,
@@ -285,17 +295,31 @@ class PatientRepository {
     if (!this.useMemory) {
       try {
         const pool = this.poolResolver(clinicId);
+        const citizenId = patientData.identity_card || patientData.citizen_id;
+        const phone = patientData.phone_number || patientData.phone || '';
+        const citizenEnc = encrypt(citizenId);
+        const phoneEnc = encrypt(phone);
+        const citizenBindex = generateBlindIndex(citizenId);
+        const phoneBindex = generateBlindIndex(phone);
+
+        let dbGender = 'other';
+        if (patientData.gender === 'Nam' || patientData.gender === 'male' || patientData.gender === 'Male') dbGender = 'male';
+        else if (patientData.gender === 'Nu' || patientData.gender === 'female' || patientData.gender === 'Female') dbGender = 'female';
+
         const [result] = await pool.query(
           `INSERT INTO patients (
-            origin_clinic_id, identity_card, full_name, phone_number,
+            origin_clinic_id, full_name, citizen_id_encrypted, phone_encrypted,
+            citizen_id_bindex, phone_bindex,
             gender, date_of_birth, address, blood_type, medical_history
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             clinicId,
-            patientData.identity_card,
             patientData.full_name,
-            patientData.phone_number,
-            patientData.gender || 'Khac',
+            citizenEnc,
+            phoneEnc,
+            citizenBindex,
+            phoneBindex,
+            dbGender,
             patientData.date_of_birth || null,
             patientData.address || null,
             patientData.blood_type || null,
@@ -303,7 +327,7 @@ class PatientRepository {
           ]
         );
 
-        const [rows] = await pool.query('SELECT * FROM patients WHERE patient_id = ?', [result.insertId]);
+        const [rows] = await pool.query('SELECT * FROM patients WHERE id = ? OR patient_id = ?', [result.insertId, result.insertId]);
         return Patient.fromDatabaseRow(rows[0]);
       } catch (err) {
         if (err.name === 'GatewayTimeoutError') throw err;
@@ -455,19 +479,20 @@ class PatientRepository {
 
   async findByIdentityCard(identityCard) {
     const cccd = String(identityCard).trim();
+    const bindex = generateBlindIndex(cccd);
 
     if (!this.useMemory) {
       try {
         if (this.simulateTimeout[1]) {
           throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node Hà Nội (Gateway Timeout)`);
         }
-        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients WHERE identity_card = ?', [cccd]);
+        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients WHERE citizen_id_bindex = ? OR identity_card = ?', [bindex, cccd]);
         if (hanoiRows.length > 0) return Patient.fromDatabaseRow(hanoiRows[0]);
 
         if (this.simulateTimeout[2]) {
           throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node TP.HCM (Gateway Timeout)`);
         }
-        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients WHERE identity_card = ?', [cccd]);
+        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients WHERE citizen_id_bindex = ? OR identity_card = ?', [bindex, cccd]);
         if (hcmRows.length > 0) return Patient.fromDatabaseRow(hcmRows[0]);
 
         return null;
@@ -573,13 +598,15 @@ class PatientRepository {
     const params = [];
 
     if (filters.citizen_id) {
-      conditions.push('identity_card = ?');
-      params.push(String(filters.citizen_id).trim());
+      const bindex = generateBlindIndex(String(filters.citizen_id).trim());
+      conditions.push('(citizen_id_bindex = ? OR identity_card = ?)');
+      params.push(bindex, String(filters.citizen_id).trim());
     }
 
     if (filters.phone_number) {
-      conditions.push('phone_number = ?');
-      params.push(String(filters.phone_number).trim());
+      const bindex = generateBlindIndex(String(filters.phone_number).trim());
+      conditions.push('(phone_bindex = ? OR phone_number = ?)');
+      params.push(bindex, String(filters.phone_number).trim());
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
