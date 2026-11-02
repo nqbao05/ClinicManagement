@@ -56,7 +56,7 @@ class MemoryShardDatabase {
       };
     }
 
-    if (trimmed.includes('SELECT * FROM patients WHERE patient_id = ?')) {
+    if (trimmed.startsWith('SELECT') && (trimmed.includes('WHERE id = ?') || trimmed.includes('WHERE patient_id = ?'))) {
       return {
         get(id) {
           return self.records.find((r) => r.patient_id === Number(id)) || null;
@@ -72,10 +72,10 @@ class MemoryShardDatabase {
       };
     }
 
-    if (trimmed.startsWith('SELECT * FROM patients ORDER BY patient_id DESC')) {
+    if (trimmed.includes('ORDER BY patient_id DESC') || trimmed.includes('ORDER BY id DESC')) {
       return {
         all() {
-          return [...self.records].sort((a, b) => b.patient_id - a.patient_id);
+          return [...self.records].sort((a, b) => (b.id || b.patient_id) - (a.id || a.patient_id));
         }
       };
     }
@@ -195,7 +195,7 @@ class PatientRepository {
       try {
         const pool = this.poolResolver(clinicId);
         const [rows] = await pool.query(
-          `SELECT * FROM patients WHERE citizen_id_bindex = ? OR identity_card = ? LIMIT 1`,
+          `SELECT * FROM patients WHERE citizen_id_bindex = ? LIMIT 1`,
           [bindex, cccd]
         );
         if (!rows || rows.length === 0) return null;
@@ -245,7 +245,7 @@ class PatientRepository {
           ]
         );
 
-        const [rows] = await pool.query(`SELECT * FROM patients WHERE id = ? OR patient_id = ?`, [result.insertId, result.insertId]);
+        const [rows] = await pool.query(`SELECT * FROM patients WHERE id = ?`, [result.insertId, result.insertId]);
         const entity = Patient.fromDatabaseRow(rows[0]);
         return entity ? entity.toJSON() : {
           patient_id: result.insertId,
@@ -327,7 +327,7 @@ class PatientRepository {
           ]
         );
 
-        const [rows] = await pool.query('SELECT * FROM patients WHERE id = ? OR patient_id = ?', [result.insertId, result.insertId]);
+        const [rows] = await pool.query('SELECT * FROM patients WHERE id = ?', [result.insertId, result.insertId]);
         return Patient.fromDatabaseRow(rows[0]);
       } catch (err) {
         if (err.name === 'GatewayTimeoutError') throw err;
@@ -372,7 +372,7 @@ class PatientRepository {
       if (!this.useMemory) {
         try {
           const pool = this.poolResolver(clinicId);
-          const [rows] = await pool.query('SELECT * FROM patients ORDER BY patient_id DESC');
+          const [rows] = await pool.query('SELECT * FROM patients ORDER BY id DESC');
           return rows.map((r) => Patient.fromDatabaseRow(r));
         } catch (err) {
           if (err.name === 'GatewayTimeoutError') throw err;
@@ -394,8 +394,8 @@ class PatientRepository {
           throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node TP.HCM (Gateway Timeout)`);
         }
 
-        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients ORDER BY patient_id DESC');
-        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients ORDER BY patient_id DESC');
+        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients ORDER BY id DESC');
+        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients ORDER BY id DESC');
 
         const allRows = [...hanoiRows, ...hcmRows].sort((a, b) => b.patient_id - a.patient_id);
         return allRows.map((r) => Patient.fromDatabaseRow(r));
@@ -433,7 +433,7 @@ class PatientRepository {
       if (!this.useMemory) {
         try {
           const pool = this.poolResolver(clinicId);
-          const [rows] = await pool.query('SELECT * FROM patients WHERE patient_id = ?', [targetId]);
+          const [rows] = await pool.query('SELECT * FROM patients WHERE id = ?', [targetId]);
           return rows[0] ? Patient.fromDatabaseRow(rows[0]) : null;
         } catch (err) {
           if (err.name === 'GatewayTimeoutError') throw err;
@@ -452,13 +452,13 @@ class PatientRepository {
         if (this.simulateTimeout[1]) {
           throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node Hà Nội (Gateway Timeout)`);
         }
-        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients WHERE patient_id = ?', [targetId]);
+        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients WHERE id = ?', [targetId]);
         if (hanoiRows.length > 0) return Patient.fromDatabaseRow(hanoiRows[0]);
 
         if (this.simulateTimeout[2]) {
           throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node TP.HCM (Gateway Timeout)`);
         }
-        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients WHERE patient_id = ?', [targetId]);
+        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients WHERE id = ?', [targetId]);
         if (hcmRows.length > 0) return Patient.fromDatabaseRow(hcmRows[0]);
 
         return null;
@@ -486,13 +486,13 @@ class PatientRepository {
         if (this.simulateTimeout[1]) {
           throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node Hà Nội (Gateway Timeout)`);
         }
-        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients WHERE citizen_id_bindex = ? OR identity_card = ?', [bindex, cccd]);
+        const [hanoiRows] = await this.poolResolver(1).query('SELECT * FROM patients WHERE citizen_id_bindex = ?', [bindex]);
         if (hanoiRows.length > 0) return Patient.fromDatabaseRow(hanoiRows[0]);
 
         if (this.simulateTimeout[2]) {
           throw new GatewayTimeoutError(`Không thể kết nối đến máy chủ khu vực Node TP.HCM (Gateway Timeout)`);
         }
-        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients WHERE citizen_id_bindex = ? OR identity_card = ?', [bindex, cccd]);
+        const [hcmRows] = await this.poolResolver(2).query('SELECT * FROM patients WHERE citizen_id_bindex = ?', [bindex]);
         if (hcmRows.length > 0) return Patient.fromDatabaseRow(hcmRows[0]);
 
         return null;
@@ -544,7 +544,7 @@ class PatientRepository {
           ]
         );
 
-        const [rows] = await pool.query('SELECT * FROM patients WHERE patient_id = ?', [existing.patient_id]);
+        const [rows] = await pool.query('SELECT * FROM patients WHERE id = ?', [existing.patient_id]);
         return Patient.fromDatabaseRow(rows[0]);
       } catch (err) {
         if (err.name === 'GatewayTimeoutError') throw err;
@@ -579,7 +579,7 @@ class PatientRepository {
     if (!this.useMemory) {
       try {
         const pool = this.poolResolver(clinicId);
-        const [result] = await pool.query('DELETE FROM patients WHERE patient_id = ?', [existing.patient_id]);
+        const [result] = await pool.query('DELETE FROM patients WHERE id = ?', [existing.patient_id]);
         return result.affectedRows > 0;
       } catch (err) {
         if (err.name === 'GatewayTimeoutError') throw err;
@@ -623,7 +623,7 @@ class PatientRepository {
         const selectSql = `
           SELECT * FROM patients 
           ${whereClause} 
-          ORDER BY patient_id DESC 
+          ORDER BY id DESC
           LIMIT ? OFFSET ?
         `;
         const [dataRows] = await pool.query(selectSql, [...params, limit, offset]);

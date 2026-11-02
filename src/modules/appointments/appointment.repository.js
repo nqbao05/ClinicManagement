@@ -72,11 +72,12 @@ class AppointmentRepository {
    */
   async findDoctorById(clinicId, doctorId) {
     const pool = this._getPool(clinicId);
+    const dId = Number(doctorId);
     const [rows] = await pool.query(
-      `SELECT doctor_id, clinic_id, full_name, specialty, created_at 
+      `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, created_at 
        FROM doctors 
-       WHERE doctor_id = ? AND clinic_id = ? LIMIT 1`,
-      [Number(doctorId), Number(clinicId)]
+       WHERE id = ? AND clinic_id = ? LIMIT 1`,
+      [dId, Number(clinicId)]
     );
     return rows.length > 0 ? rows[0] : null;
   }
@@ -194,21 +195,31 @@ class AppointmentRepository {
       `SELECT a.id, a.id AS appointment_id, a.patient_id, a.doctor_id, a.clinic_id, 
               a.slot_time, a.status, a.created_at,
               d.full_name AS doctor_name, d.specialty AS doctor_specialty,
-              p.full_name AS patient_name, p.phone_encrypted, p.phone_number AS patient_phone
+              p.full_name AS patient_name, p.phone_encrypted
        FROM appointments a
-       LEFT JOIN doctors d ON (a.doctor_id = d.id OR a.doctor_id = d.doctor_id)
-       LEFT JOIN patients p ON (a.patient_id = p.id OR a.patient_id = p.patient_id)
+       LEFT JOIN doctors d ON a.doctor_id = d.id
+       LEFT JOIN patients p ON a.patient_id = p.id
        ${whereClause}
        ORDER BY a.slot_time DESC
        LIMIT ? OFFSET ?`,
       queryParams
     );
 
-    const mappedRows = rows.map((r) => ({
-      ...r,
-      appointment_id: r.appointment_id || r.id,
-      patient_phone: r.phone_encrypted ? decrypt(r.phone_encrypted) : r.patient_phone
-    }));
+    const mappedRows = rows.map((r) => {
+      let patientPhone = '';
+      if (r.phone_encrypted) {
+        try {
+          patientPhone = decrypt(r.phone_encrypted);
+        } catch (e) {
+          patientPhone = r.phone_encrypted;
+        }
+      }
+      return {
+        ...r,
+        appointment_id: r.appointment_id || r.id,
+        patient_phone: patientPhone
+      };
+    });
 
     return { rows: mappedRows, total };
   }
@@ -219,13 +230,13 @@ class AppointmentRepository {
    * @param {number} appointmentId 
    */
   async findById(clinicId, appointmentId) {
-    const pool = this.getPool(clinicId);
+    const pool = this._getPool(clinicId);
     const aId = Number(appointmentId);
     const [rows] = await pool.query(
       `SELECT id, id AS appointment_id, patient_id, doctor_id, clinic_id, slot_time, status, created_at
        FROM appointments
-       WHERE id = ? OR appointment_id = ? LIMIT 1`,
-      [aId, aId]
+       WHERE id = ? LIMIT 1`,
+      [aId]
     );
     return rows[0] || null;
   }
@@ -237,11 +248,11 @@ class AppointmentRepository {
    * @param {string} status 
    */
   async updateStatus(clinicId, appointmentId, status) {
-    const pool = this.getPool(clinicId);
+    const pool = this._getPool(clinicId);
     const aId = Number(appointmentId);
     await pool.query(
-      `UPDATE appointments SET status = ? WHERE id = ? OR appointment_id = ?`,
-      [status, aId, aId]
+      `UPDATE appointments SET status = ? WHERE id = ?`,
+      [status, aId]
     );
     return this.findById(clinicId, appointmentId);
   }

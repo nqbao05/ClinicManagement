@@ -9,13 +9,33 @@
 const CLINIC_DOCTORS = {
   1: [
     { id: 1, name: 'BS. CKI Nguyễn Văn A', specialty: 'Khoa Tim Mạch' },
-    { id: 2, name: 'BS. CKII Lê Thị B', specialty: 'Khoa Nhi' }
+    { id: 2, name: 'BS. CKII Lê Thị B', specialty: 'Khoa Nội' },
+    { id: 3, name: 'ThS.BS Hoàng Minh C', specialty: 'Khoa Nhi' },
+    { id: 4, name: 'BS. Đỗ Quang D', specialty: 'Khoa Mắt' }
   ],
   2: [
-    { id: 3, name: 'ThS.BS Trần Văn C', specialty: 'Khoa Cơ Xương Khớp' },
-    { id: 4, name: 'BS. CKI Phạm Thị D', specialty: 'Khoa Nội Tổng Quát' }
+    { id: 1, name: 'TS.BS Trần Văn C', specialty: 'Khoa Tim Mạch' },
+    { id: 2, name: 'BS. CKI Phạm Thị D', specialty: 'Khoa Cơ Xương Khớp' },
+    { id: 3, name: 'ThS.BS Vũ Hải E', specialty: 'Khoa Nhi' },
+    { id: 4, name: 'BS. CKII Nguyễn Minh F', specialty: 'Khoa Thần Kinh' }
   ]
 };
+
+// Hàm định dạng giờ slot an toàn chống lệch Timezone UTC/Local
+function extractSlotTimeHHMM(slotTimeStr) {
+  if (!slotTimeStr) return null;
+  const str = String(slotTimeStr);
+  if (str.includes('Z')) {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+  }
+  const match = str.match(/(?:T|\s)(\d{2}:\d{2})/);
+  return match ? match[1] : null;
+}
 
 // Khung giờ khám chuẩn giờ hành chính (Bội số 30 phút)
 const MORNING_SLOTS = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00'];
@@ -177,13 +197,14 @@ async function loadDoctorBookedSlots() {
     const res = await fetch(url);
     const data = await res.json();
 
-    if (res.ok && data.data) {
-      data.data.forEach((apt) => {
-        if (apt.status !== 'Cancelled' && apt.slot_time) {
-          // Trích xuất HH:mm từ slot_time
-          const match = apt.slot_time.match(/(?:T|\s)(\d{2}:\d{2})/);
-          if (match) {
-            state.bookedSlots.add(match[1]);
+    const list = Array.isArray(data.data) ? data.data : (Array.isArray(data.data?.data) ? data.data.data : []);
+    if (res.ok && list.length > 0) {
+      list.forEach((apt) => {
+        const st = String(apt.status || '').toLowerCase();
+        if (st !== 'cancelled' && apt.slot_time) {
+          const hhmm = extractSlotTimeHHMM(apt.slot_time);
+          if (hhmm) {
+            state.bookedSlots.add(hhmm);
           }
         }
       });
@@ -349,7 +370,7 @@ async function fetchAppointmentList() {
       throw new Error(result.message || `Lỗi HTTP ${res.status}`);
     }
 
-    const appointments = result.data || [];
+    const appointments = Array.isArray(result.data) ? result.data : (Array.isArray(result.data?.data) ? result.data.data : []);
     countBadge.innerText = appointments.length;
 
     // TRẠNG THÁI 2: SUCCESS EMPTY STATE
@@ -372,7 +393,7 @@ async function fetchAppointmentList() {
     // TRẠNG THÁI 3: SUCCESS DATA RENDER
     tbody.innerHTML = appointments
       .map((item) => {
-        const timeStr = item.slot_time ? item.slot_time.replace('T', ' ').slice(11, 16) : '--:--';
+        const timeStr = extractSlotTimeHHMM(item.slot_time) || '--:--';
         const isConfirmed = item.status === 'Confirmed';
         return `
           <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
@@ -424,6 +445,26 @@ async function fetchAppointmentList() {
 // ========================================================
 document.addEventListener('DOMContentLoaded', () => {
   initDateInput();
+
+  // Nhận diện người dùng đang đăng nhập
+  const currentUser = window.Auth ? window.Auth.getUser() : null;
+  if (currentUser) {
+    if (currentUser.role === 'staff' && currentUser.clinic_id) {
+      state.clinicId = Number(currentUser.clinic_id);
+      const clinicSelect = document.getElementById('clinic-select');
+      if (clinicSelect) {
+        clinicSelect.value = String(currentUser.clinic_id);
+        clinicSelect.disabled = true;
+      }
+    } else if (currentUser.role === 'patient') {
+      const patientIdInput = document.getElementById('patient-id-input');
+      if (patientIdInput && currentUser.patient_id) {
+        patientIdInput.value = currentUser.patient_id;
+        patientIdInput.readOnly = true;
+      }
+    }
+  }
+
   updateDoctorOptions();
   renderTimeSlots();
   loadDoctorBookedSlots();

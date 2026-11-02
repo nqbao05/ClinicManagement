@@ -44,7 +44,7 @@ class DashboardRepository {
     const [specialtyRows] = await pool.query(
       `SELECT d.specialty, COUNT(a.id) AS total_appointments 
        FROM appointments a 
-       JOIN doctors d ON (a.doctor_id = d.id OR a.doctor_id = d.doctor_id) 
+       JOIN doctors d ON a.doctor_id = d.id 
        WHERE a.slot_time >= ? AND a.slot_time <= ? AND a.status != 'Cancelled' AND a.status != 'cancelled'
        GROUP BY d.specialty`,
       [fromDatetime, toDatetime]

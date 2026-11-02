@@ -35,7 +35,8 @@ const dbBasePoolConfig = {
   waitForConnections: true,
   queueLimit: Number(process.env.DB_QUEUE_LIMIT) || 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 10000
+  keepAliveInitialDelay: 10000,
+  dateStrings: true
 };
 
 // 1. Connection Pool trỏ tới Node 1: clinic_hanoi (Hà Nội Shard - clinic_id = 1)

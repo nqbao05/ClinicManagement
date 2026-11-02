@@ -24,7 +24,7 @@ class DoctorRepository {
     const [rows] = await pool.query(
       `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, created_at 
        FROM doctors 
-       WHERE (id = ? OR doctor_id = ?) AND clinic_id = ? LIMIT 1`,
+       WHERE id = ? AND clinic_id = ? LIMIT 1`,
       [dId, dId, Number(clinicId)]
     );
     return rows[0] || null;
