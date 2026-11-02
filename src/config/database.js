@@ -20,62 +20,38 @@ function loadEnv() {
           }
         }
       });
-    } catch (e) {}
+    } catch (e) { }
   }
 }
 loadEnv();
 
-// Cấu hình Connection Pool cấp độ Enterprise chuẩn Production
-const dbBasePoolConfig = {
+// Cấu hình Connection Pool duy nhất trỏ về clinic_db
+const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT) || 3306,
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD !== undefined ? process.env.DB_PASSWORD : '',
+  database: process.env.DB_NAME || 'clinic_db', // Nguồn sự thật duy nhất
   connectionLimit: Number(process.env.DB_POOL_LIMIT) || 10,
   waitForConnections: true,
   queueLimit: Number(process.env.DB_QUEUE_LIMIT) || 0,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   dateStrings: true
-};
-
-// 1. Connection Pool trỏ tới Node 1: clinic_hanoi (Hà Nội Shard - clinic_id = 1)
-const poolHanoi = mysql.createPool({
-  ...dbBasePoolConfig,
-  database: 'clinic_hanoi'
 });
 
-// 2. Connection Pool trỏ tới Node 2: clinic_hcm (TP.HCM Shard - clinic_id = 2)
-const poolHcm = mysql.createPool({
-  ...dbBasePoolConfig,
-  database: 'clinic_hcm'
-});
-
-/**
- * Điều phối Router kết nối đến đúng Pool của Shard CSDL
- * @param {number|string} clinicId - 1: Hà Nội, 2: TP.HCM
- * @returns {mysql.Pool}
- */
-function getDbPool(clinicId) {
-  const id = Number(clinicId);
-  if (id === 2) {
-    return poolHcm;
-  }
-  return poolHanoi;
-}
-
-// Giữ alias getDbNode để tương thích hoàn toàn mã nguồn cũ
-const getDbNode = getDbPool;
+// Giữ lại alias để không làm hỏng các file gọi hàm cũ (nếu có)
+const getDbPool = () => pool;
+const getDbNode = () => pool;
 
 /**
  * Thực thi một thao tác dữ liệu nhạy cảm bên trong Database Transaction an toàn
  * Tự động BEGIN -> COMMIT / ROLLBACK và giải phóng kết nối về Pool
- * @param {number|string} clinicId 
- * @param {Function} callback - Hàm thực thi nhận connection (async (conn) => { ... })
+ * @param {Function} callback Hàm thực thi nhận connection (async (conn) => { ... })
  * @returns {Promise<any>}
  */
-async function executeWithTransaction(clinicId, callback) {
-  const pool = getDbPool(clinicId);
+async function executeWithTransaction(callback) {
+  // Đã bỏ tham số clinicId vì giờ chỉ có 1 DB
   const connection = await pool.getConnection();
 
   try {
@@ -92,33 +68,23 @@ async function executeWithTransaction(clinicId, callback) {
 }
 
 /**
- * Kiểm tra trạng thái sức khỏe kết nối (Healthcheck Ping) tới các Shard Nodes
+ * Kiểm tra trạng thái sức khỏe kết nối (Healthcheck Ping) tới Database
  * @returns {Promise<Object>}
  */
 async function healthCheckPools() {
-  const status = { hanoi: false, hcm: false, timestamp: new Date().toISOString() };
+  const status = { database: false, timestamp: new Date().toISOString() };
   try {
-    const conn1 = await poolHanoi.getConnection();
-    await conn1.ping();
-    conn1.release();
-    status.hanoi = true;
+    const conn = await pool.getConnection();
+    await conn.ping();
+    conn.release();
+    status.database = true;
   } catch (e) {
-    status.hanoiError = e.message;
+    status.error = e.message;
   }
-
-  try {
-    const conn2 = await poolHcm.getConnection();
-    await conn2.ping();
-    conn2.release();
-    status.hcm = true;
-  } catch (e) {
-    status.hcmError = e.message;
-  }
-
   return status;
 }
 
-// Fallback in-memory SQLite driver giữ cho toàn bộ Unit Tests chạy mượt mà độc lập
+// Fallback in-memory SQLite driver giữ nguyên cho Unit Tests
 class FallbackDatabase {
   constructor() {
     this.clinics = [];
@@ -127,8 +93,8 @@ class FallbackDatabase {
     this.appointments = [];
     this.appointmentId = 1;
   }
-  pragma() {}
-  exec() {}
+  pragma() { }
+  exec() { }
   transaction(fn) { return (arg) => fn(arg); }
   prepare(sql) {
     const trimmed = sql.trim().replace(/\s+/g, ' ');
@@ -149,7 +115,6 @@ class FallbackDatabase {
             appointment_id: id,
             patient_id: params.patient_id,
             doctor_id: params.doctor_id,
-            clinic_id: params.clinic_id,
             slot_time: params.slot_time,
             status: params.status || 'Pending'
           });
@@ -185,11 +150,8 @@ class FallbackDatabase {
 
 async function closeAllPools() {
   try {
-    await Promise.allSettled([
-      poolHanoi.end(),
-      poolHcm.end()
-    ]);
-  } catch (e) {}
+    await pool.end();
+  } catch (e) { }
 }
 
 function createDatabase() {
@@ -197,8 +159,7 @@ function createDatabase() {
 }
 
 module.exports = {
-  poolHanoi,
-  poolHcm,
+  pool,
   getDbPool,
   getDbNode,
   executeWithTransaction,

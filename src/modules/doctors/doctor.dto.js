@@ -54,9 +54,10 @@ function validateCreateDoctor(data = {}) {
     throw new BadRequestError('Dữ liệu yêu cầu không hợp lệ.');
   }
 
-  const clinicId = Number(data.clinic_id);
-  if (![1, 2].includes(clinicId)) {
-    throw new BadRequestError('Mã chi nhánh (clinic_id) là bắt buộc và phải là 1 (Hà Nội) hoặc 2 (TP.HCM).');
+  let clinicId = 1;
+  if (data.clinic_id !== undefined && data.clinic_id !== '') {
+    clinicId = Number(data.clinic_id);
+    if (isNaN(clinicId)) clinicId = 1;
   }
 
   const fullName = String(data.full_name || '').trim();

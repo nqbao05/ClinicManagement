@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quản Lý Bác Sĩ - ClinicCare Hospital</title>
+  <title>Quản Lý Đội Ngũ Bác Sĩ - ClinicCare Hospital</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -51,13 +51,13 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
-              Quản Lý Bác Sĩ & Cơ Sở
+              Quản Lý Đội Ngũ Bác Sĩ
             </h1>
             <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-full border border-blue-200">
               ClinicCare
             </span>
           </div>
-          <p class="text-xs text-slate-500">Hệ thống Quản lý Đội ngũ Y Bác sĩ ClinicCare Hospital</p>
+          <p class="text-xs text-slate-500">Hệ thống Quản lý Đội ngũ Y Bác sĩ Bệnh Viện ClinicCare</p>
         </div>
       </div>
 
@@ -120,21 +120,21 @@
 
       <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
         <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
-          <i data-lucide="building-2" class="w-6 h-6"></i>
+          <i data-lucide="pause-circle" class="w-6 h-6"></i>
         </div>
         <div>
-          <div class="text-xs font-medium text-slate-500">Cơ Sở 1: Hà Nội</div>
-          <div id="stat-hanoi-doctors" class="text-2xl font-bold text-slate-900 mt-0.5">--</div>
+          <div class="text-xs font-medium text-slate-500">Tạm Ngưng Khám</div>
+          <div id="stat-inactive-doctors" class="text-2xl font-bold text-amber-600 mt-0.5">--</div>
         </div>
       </div>
 
       <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
         <div class="p-3 bg-purple-50 text-purple-600 rounded-xl">
-          <i data-lucide="building-2" class="w-6 h-6"></i>
+          <i data-lucide="layout-grid" class="w-6 h-6"></i>
         </div>
         <div>
-          <div class="text-xs font-medium text-slate-500">Cơ Sở 2: TP.HCM</div>
-          <div id="stat-hcm-doctors" class="text-2xl font-bold text-slate-900 mt-0.5">--</div>
+          <div class="text-xs font-medium text-slate-500">Số Chuyên Khoa</div>
+          <div id="stat-specialties-count" class="text-2xl font-bold text-slate-900 mt-0.5">--</div>
         </div>
       </div>
     </div>
@@ -143,18 +143,8 @@
     <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         
-        <!-- Bộ lọc Shard & Chuyên khoa & Trạng thái -->
+        <!-- Bộ lọc Chuyên khoa & Trạng thái -->
         <div class="flex flex-wrap items-center gap-3">
-          <!-- Chi nhánh Shard Selector -->
-          <div class="flex items-center gap-2">
-            <label for="filter-clinic" class="text-xs font-bold text-slate-700 whitespace-nowrap">Cơ sở:</label>
-            <select id="filter-clinic" class="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-              <option value="">Tất Cả Cơ Sở (Cross-Node)</option>
-              <option value="1">Cơ sở 1 - Hà Nội (clinic_hanoi)</option>
-              <option value="2">Cơ sở 2 - TP.HCM (clinic_hcm)</option>
-            </select>
-          </div>
-
           <!-- Chuyên khoa Selector -->
           <div class="flex items-center gap-2">
             <label for="filter-specialty" class="text-xs font-bold text-slate-700 whitespace-nowrap">Chuyên khoa:</label>
@@ -226,7 +216,7 @@
         </div>
         <div>
           <h3 class="text-base font-bold text-slate-800">Không Thể Tải Danh Sách Bác Sĩ</h3>
-          <p id="error-message" class="text-xs text-red-600 mt-1">Lỗi kết nối máy chủ dữ liệu phân tán</p>
+          <p id="error-message" class="text-xs text-red-600 mt-1">Lỗi kết nối máy chủ dữ liệu</p>
         </div>
         <button onclick="loadDoctors()" class="px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition inline-flex items-center gap-1.5">
           <i data-lucide="rotate-cw" class="w-4 h-4"></i>
@@ -242,7 +232,6 @@
               <th class="py-3.5 px-4">Mã Bác Sĩ</th>
               <th class="py-3.5 px-4">Họ Và Tên</th>
               <th class="py-3.5 px-4">Chuyên Khoa</th>
-              <th class="py-3.5 px-4">Cơ Sở Công Tác</th>
               <th class="py-3.5 px-4">Số Điện Thoại</th>
               <th class="py-3.5 px-4">Trạng Thái</th>
               <th class="py-3.5 px-4 text-right">Thao Tác</th>
@@ -281,7 +270,7 @@
           </div>
           <div>
             <h3 id="modal-title" class="text-base font-bold text-slate-900 leading-tight">Thêm Bác Sĩ Mới</h3>
-            <p id="modal-desc" class="text-xs text-slate-500">Đăng ký thông tin bác sĩ công tác tại chi nhánh</p>
+            <p id="modal-desc" class="text-xs text-slate-500">Đăng ký thông tin bác sĩ công tác tại bệnh viện</p>
           </div>
         </div>
         <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
@@ -292,14 +281,6 @@
       <!-- Modal Form -->
       <form id="doctor-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
         <input type="hidden" id="form-doctor-id">
-        
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1">Cơ sở khám bệnh (Chi nhánh Shard) <span class="text-red-500">*</span></label>
-          <select id="form-clinic-id" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
-            <option value="1">Cơ sở 1 - Hà Nội (Node clinic_hanoi)</option>
-            <option value="2">Cơ sở 2 - TP.HCM (Node clinic_hcm)</option>
-          </select>
-        </div>
 
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">Họ và tên bác sĩ <span class="text-red-500">*</span></label>

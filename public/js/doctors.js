@@ -1,5 +1,5 @@
 /**
- * Frontend Logic cho Phân hệ Quản lý Bác sĩ & Cơ Sở (TV1 Medical Staff)
+ * Frontend Logic cho Phân hệ Quản lý Đội ngũ Bác sĩ - ClinicCare Hospital
  * Quản lý trạng thái 3 tầng: Loading Skeleton, Error Fallback, Success Render.
  */
 
@@ -13,13 +13,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Khởi tạo các event listeners
-  const filterClinic = document.getElementById('filter-clinic');
   const filterSpecialty = document.getElementById('filter-specialty');
   const filterStatus = document.getElementById('filter-status');
   const filterSearch = document.getElementById('filter-search');
   const btnOpenModal = document.getElementById('btn-open-create-modal');
 
-  if (filterClinic) filterClinic.addEventListener('change', loadDoctors);
   if (filterSpecialty) filterSpecialty.addEventListener('change', loadDoctors);
   if (filterStatus) filterStatus.addEventListener('change', loadDoctors);
   if (filterSearch) {
@@ -62,13 +60,11 @@ async function loadDoctors() {
   emptyEl.classList.add('hidden');
 
   try {
-    const clinicId = document.getElementById('filter-clinic')?.value || '';
     const specialty = document.getElementById('filter-specialty')?.value || '';
     const status = document.getElementById('filter-status')?.value || '';
     const search = document.getElementById('filter-search')?.value.trim() || '';
 
     const params = new URLSearchParams();
-    if (clinicId) params.append('clinic_id', clinicId);
     if (specialty) params.append('specialty', specialty);
     if (status && status !== 'all') params.append('status', status);
     if (search) params.append('search', search);
@@ -99,35 +95,28 @@ async function loadDoctors() {
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-slate-50 transition border-b border-slate-100';
 
-        const cId = Number(doc.clinic_id);
-        const clinicBadge = cId === 1
-          ? '<span class="badge-clinic badge-hanoi"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Hà Nội (CS1)</span>'
-          : '<span class="badge-clinic badge-hcm"><span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span>TP.HCM (CS2)</span>';
-
         const isActive = doc.status === 'active';
         const statusBadge = isActive
-          ? '<span class="badge-status badge-active"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Hoạt động</span>'
-          : '<span class="badge-status badge-inactive"><span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>Tạm ngưng</span>';
+          ? '<span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Hoạt động</span>'
+          : '<span class="px-2.5 py-1 text-[11px] font-bold rounded-full bg-rose-50 text-rose-700 border border-rose-200 inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>Tạm ngưng</span>';
 
         const doctorId = doc.id || doc.doctor_id;
 
         tr.innerHTML = `
-          <td class="py-3 px-4 font-mono font-bold text-slate-500">#${doctorId}</td>
-          <td class="py-3 px-4">
+          <td class="py-3.5 px-4 font-mono font-bold text-slate-700">BS-${String(doctorId).padStart(3, '0')}</td>
+          <td class="py-3.5 px-4">
             <div class="font-bold text-slate-900">${escapeHtml(doc.full_name)}</div>
-            <div class="text-[11px] text-slate-400">Cơ sở ${cId}</div>
           </td>
-          <td class="py-3 px-4">
-            <span class="px-2.5 py-1 text-[11px] font-semibold bg-slate-100 text-slate-700 rounded-lg">
+          <td class="py-3.5 px-4">
+            <span class="px-2.5 py-1 text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200 rounded-lg">
               ${escapeHtml(doc.specialty)}
             </span>
           </td>
-          <td class="py-3 px-4">${clinicBadge}</td>
-          <td class="py-3 px-4 font-mono text-slate-600">${doc.phone ? escapeHtml(doc.phone) : '<span class="text-slate-300">Chưa có</span>'}</td>
-          <td class="py-3 px-4">${statusBadge}</td>
-          <td class="py-3 px-4 text-right">
+          <td class="py-3.5 px-4 font-mono text-slate-600">${doc.phone ? escapeHtml(doc.phone) : '<span class="text-slate-300">Chưa có</span>'}</td>
+          <td class="py-3.5 px-4">${statusBadge}</td>
+          <td class="py-3.5 px-4 text-right">
             <div class="flex items-center justify-end gap-1.5">
-              <button onclick="toggleStatus(${doctorId}, '${doc.status}', ${cId})" title="${isActive ? 'Tạm ngưng tiếp nhận' : 'Kích hoạt bác sĩ'}" 
+              <button onclick="toggleStatus(${doctorId}, '${doc.status}')" title="${isActive ? 'Tạm ngưng tiếp nhận' : 'Kích hoạt bác sĩ'}" 
                       class="p-1.5 text-slate-500 hover:text-${isActive ? 'amber' : 'emerald'}-600 hover:bg-slate-100 rounded-lg transition">
                 <i data-lucide="${isActive ? 'pause-circle' : 'play-circle'}" class="w-4 h-4"></i>
               </button>
@@ -135,7 +124,7 @@ async function loadDoctors() {
                       class="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                 <i data-lucide="edit-3" class="w-4 h-4"></i>
               </button>
-              <button onclick="deleteDoctor(${doctorId}, ${cId}, '${escapeHtml(doc.full_name)}')" title="Xóa bác sĩ"
+              <button onclick="deleteDoctor(${doctorId}, '${escapeHtml(doc.full_name)}')" title="Xóa bác sĩ (Xóa mềm)"
                       class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
                 <i data-lucide="trash-2" class="w-4 h-4"></i>
               </button>
@@ -171,18 +160,18 @@ async function loadDoctors() {
 function updateStats(doctors) {
   const total = doctors.length;
   const active = doctors.filter(d => d.status === 'active').length;
-  const hanoi = doctors.filter(d => Number(d.clinic_id) === 1).length;
-  const hcm = doctors.filter(d => Number(d.clinic_id) === 2).length;
+  const inactive = doctors.filter(d => d.status !== 'active').length;
+  const specialties = new Set(doctors.map(d => d.specialty).filter(Boolean)).size;
 
   const totalEl = document.getElementById('stat-total-doctors');
   const activeEl = document.getElementById('stat-active-doctors');
-  const hanoiEl = document.getElementById('stat-hanoi-doctors');
-  const hcmEl = document.getElementById('stat-hcm-doctors');
+  const inactiveEl = document.getElementById('stat-inactive-doctors');
+  const specialtiesEl = document.getElementById('stat-specialties-count');
 
   if (totalEl) totalEl.textContent = total;
   if (activeEl) activeEl.textContent = active;
-  if (hanoiEl) hanoiEl.textContent = hanoi;
-  if (hcmEl) hcmEl.textContent = hcm;
+  if (inactiveEl) inactiveEl.textContent = inactive;
+  if (specialtiesEl) specialtiesEl.textContent = specialties;
 }
 
 /**
@@ -197,9 +186,8 @@ function openCreateModal() {
 
   form.reset();
   document.getElementById('form-doctor-id').value = '';
-  document.getElementById('form-clinic-id').disabled = false;
   title.textContent = 'Thêm Bác Sĩ Mới';
-  desc.textContent = 'Đăng ký thông tin bác sĩ công tác tại chi nhánh';
+  desc.textContent = 'Đăng ký thông tin bác sĩ công tác tại bệnh viện';
   errorBox.classList.add('hidden');
 
   modal.classList.remove('hidden');
@@ -217,8 +205,6 @@ function openEditModal(doc) {
 
   const doctorId = doc.id || doc.doctor_id;
   document.getElementById('form-doctor-id').value = doctorId;
-  document.getElementById('form-clinic-id').value = doc.clinic_id;
-  document.getElementById('form-clinic-id').disabled = true; // Không cho đổi chi nhánh shard khi sửa
   document.getElementById('form-full-name').value = doc.full_name || '';
   document.getElementById('form-specialty').value = doc.specialty || '';
   document.getElementById('form-phone').value = doc.phone || '';
@@ -249,22 +235,21 @@ async function handleFormSubmit(event) {
 
   errorBox.classList.add('hidden');
   btnSave.disabled = true;
-  btnSave.innerHTML = '<span class="inline-block animate-spin mr-1">⌛</span> Đang lưu...';
+  btnSave.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang xử lý...</span>`;
+  if (window.lucide) window.lucide.createIcons();
 
   try {
     const doctorId = document.getElementById('form-doctor-id').value;
-    const clinicId = Number(document.getElementById('form-clinic-id').value);
     const fullName = document.getElementById('form-full-name').value.trim();
     const specialty = document.getElementById('form-specialty').value.trim();
     const phone = document.getElementById('form-phone').value.trim();
     const status = document.getElementById('form-status').value;
 
     const payload = {
-      clinic_id: clinicId,
       full_name: fullName,
-      specialty,
+      specialty: specialty,
       phone: phone || null,
-      status
+      status: status
     };
 
     const token = getAuthToken();
@@ -277,7 +262,7 @@ async function handleFormSubmit(event) {
     let method = 'POST';
 
     if (doctorId) {
-      url = `/api/v1/doctors/${doctorId}?clinic_id=${clinicId}`;
+      url = `/api/v1/doctors/${doctorId}`;
       method = 'PUT';
     }
 
@@ -289,35 +274,33 @@ async function handleFormSubmit(event) {
 
     const json = await res.json();
     if (!res.ok || !json.success) {
-      throw new Error(json.message || 'Lỗi thao tác');
+      throw new Error(json.message || 'Thao tác không thành công');
     }
 
     closeModal();
-    await loadDoctors();
+    loadDoctors();
   } catch (err) {
     errorBox.textContent = err.message;
     errorBox.classList.remove('hidden');
   } finally {
     btnSave.disabled = false;
-    btnSave.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i><span>Lưu Thông Tin</span>';
+    btnSave.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Lưu Thông Tin</span>`;
     if (window.lucide) window.lucide.createIcons();
   }
 }
 
 /**
- * Chuyển đổi nhanh trạng thái bác sĩ (active <-> inactive)
+ * Đổi trạng thái hoạt động của bác sĩ
  */
-async function toggleStatus(doctorId, currentStatus, clinicId) {
+async function toggleStatus(doctorId, currentStatus) {
   const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
-  const label = nextStatus === 'active' ? 'Kích hoạt' : 'Tạm ngưng tiếp nhận';
+  const actionText = nextStatus === 'active' ? 'kích hoạt' : 'tạm ngưng tiếp nhận';
 
-  if (!confirm(`Bạn có chắc chắn muốn chuyển trạng thái bác sĩ #${doctorId} sang "${label}"?`)) {
-    return;
-  }
+  if (!confirm(`Bạn có chắc chắn muốn ${actionText} cho bác sĩ này?`)) return;
 
   try {
     const token = getAuthToken();
-    const res = await fetch(`/api/v1/doctors/${doctorId}/status?clinic_id=${clinicId}`, {
+    const res = await fetch(`/api/v1/doctors/${doctorId}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
@@ -331,23 +314,23 @@ async function toggleStatus(doctorId, currentStatus, clinicId) {
       throw new Error(json.message || 'Không thể đổi trạng thái');
     }
 
-    await loadDoctors();
+    loadDoctors();
   } catch (err) {
     alert(`Lỗi: ${err.message}`);
   }
 }
 
 /**
- * Xóa bác sĩ
+ * Xóa bác sĩ (Xóa mềm - Soft Delete)
  */
-async function deleteDoctor(doctorId, clinicId, name) {
-  if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa hồ sơ bác sĩ [${name}] (#${doctorId}) tại Cơ sở ${clinicId}?\nThao tác này không thể hoàn tác.`)) {
+async function deleteDoctor(doctorId, doctorName) {
+  if (!confirm(`Bạn có chắc chắn muốn xóa hồ sơ bác sĩ [${doctorName}] (Mã: #${doctorId})?\nThao tác này là XÓA MỀM và sẽ chuyển trạng thái bác sĩ sang ngưng tiếp nhận khám.`)) {
     return;
   }
 
   try {
     const token = getAuthToken();
-    const res = await fetch(`/api/v1/doctors/${doctorId}?clinic_id=${clinicId}`, {
+    const res = await fetch(`/api/v1/doctors/${doctorId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`
@@ -359,33 +342,40 @@ async function deleteDoctor(doctorId, clinicId, name) {
       throw new Error(json.message || 'Không thể xóa bác sĩ');
     }
 
-    alert('Đã xóa bác sĩ thành công!');
-    await loadDoctors();
+    alert('Đã xóa hồ sơ bác sĩ thành công!');
+    loadDoctors();
   } catch (err) {
-    alert(`Không thể xóa bác sĩ:\n${err.message}`);
+    alert(`Lỗi: ${err.message}`);
   }
 }
 
-/**
- * Xóa bộ lọc về mặc định
- */
 function resetFilters() {
-  document.getElementById('filter-clinic').value = '';
-  document.getElementById('filter-specialty').value = '';
-  document.getElementById('filter-status').value = 'all';
-  document.getElementById('filter-search').value = '';
+  const fSpecialty = document.getElementById('filter-specialty');
+  const fStatus = document.getElementById('filter-status');
+  const fSearch = document.getElementById('filter-search');
+
+  if (fSpecialty) fSpecialty.value = '';
+  if (fStatus) fStatus.value = 'all';
+  if (fSearch) fSearch.value = '';
+
   loadDoctors();
 }
 
-/**
- * Escape HTML để ngăn ngừa XSS
- */
-function escapeHtml(text) {
-  if (!text) return '';
-  return String(text)
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+window.openCreateModal = openCreateModal;
+window.openEditModal = openEditModal;
+window.closeModal = closeModal;
+window.handleFormSubmit = handleFormSubmit;
+window.toggleStatus = toggleStatus;
+window.deleteDoctor = deleteDoctor;
+window.loadDoctors = loadDoctors;
+window.resetFilters = resetFilters;

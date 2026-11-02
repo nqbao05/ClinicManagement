@@ -581,7 +581,12 @@ class PatientRepository {
     if (!this.useMemory) {
       try {
         const pool = this.poolResolver(clinicId);
-        const [result] = await pool.query('DELETE FROM patients WHERE id = ?', [existing.patient_id]);
+        let result;
+        try {
+          [result] = await pool.query('DELETE FROM patients WHERE id = ?', [existing.patient_id]);
+        } catch (fkErr) {
+          [result] = await pool.query('UPDATE patients SET is_deleted = 1 WHERE id = ?', [existing.patient_id]);
+        }
         return result.affectedRows > 0;
       } catch (err) {
         if (err.name === 'GatewayTimeoutError') throw err;
