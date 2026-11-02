@@ -10,6 +10,8 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <!-- Custom Dashboard CSS -->
   <link rel="stylesheet" href="/css/dashboard.css">
+  <script src="/js/auth-guard.js"></script>
+  <script>Auth.requireAuth(['admin']);</script>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
 
@@ -78,7 +80,7 @@
         </a>
         <!-- Phân cách dọc & Khối phiên làm việc / Đăng xuất (TV1 Auth) -->
         <div class="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 border border-indigo-200 rounded-lg text-indigo-800 text-xs font-semibold"><i data-lucide="shield-check" class="w-4 h-4 text-indigo-600"></i><span class="hidden md:inline">Vai trò:</span><span class="font-bold">Quản Trị Viên (Admin)</span></div>
+        <div id="auth-user-bar" class="flex items-center gap-2"></div>
       </nav>
     </div>
   </header>

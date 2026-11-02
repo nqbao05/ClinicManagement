@@ -24,6 +24,15 @@ class AppointmentController {
    */
   async createAppointment(req, res, next) {
     try {
+      // Server-side Filter Enforcement
+      if (req.user) {
+        if (req.user.role === 'patient' && req.user.patient_id) {
+          req.body.patient_id = req.user.patient_id;
+        } else if (req.user.role === 'staff' && req.user.clinic_id) {
+          req.body.clinic_id = req.user.clinic_id;
+        }
+      }
+
       // 1. Xác thực và chuẩn hóa dữ liệu đầu vào qua DTO
       const validatedData = validateCreateAppointment(req.body);
 
@@ -44,7 +53,17 @@ class AppointmentController {
   async getAppointments(req, res, next) {
     try {
       // Trích xuất mã chi nhánh ưu tiên: Query param -> Header X-Clinic-ID -> Mặc định: 1
-      const clinicId = Number(req.query.clinic_id || req.headers['x-clinic-id'] || 1);
+      let clinicId = Number(req.query.clinic_id || req.headers['x-clinic-id'] || 1);
+
+      // Server-side Filter Enforcement
+      if (req.user) {
+        if (req.user.role === 'staff' && req.user.clinic_id) {
+          clinicId = req.user.clinic_id;
+          req.query.clinic_id = req.user.clinic_id;
+        } else if (req.user.role === 'patient' && req.user.patient_id) {
+          req.query.patient_id = req.user.patient_id;
+        }
+      }
 
       // Gọi service xử lý truy vấn phân trang kèm quyền người dùng
       const { data, pagination } = await this.appointmentService.getAppointments(clinicId, req.query, req.user);

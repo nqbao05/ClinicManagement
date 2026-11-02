@@ -10,6 +10,14 @@ const options = {
     },
     servers: [{ url: '/api' }, { url: '/' }],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Nhập JWT Token theo định dạng: Bearer <token>'
+        }
+      },
       schemas: {
         CreateAppointmentRequest: {
           type: 'object',
@@ -33,7 +41,12 @@ const options = {
           }
         }
       }
-    }
+    },
+    security: [
+      {
+        bearerAuth: []
+      }
+    ]
   },
   apis: ['./src/modules/**/*.js']
 };

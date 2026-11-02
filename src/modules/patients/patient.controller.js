@@ -22,6 +22,10 @@ class PatientController {
 
   async createPatientV1(req, res, next) {
     try {
+      // Server-side Filter Enforcement
+      if (req.user && req.user.role === 'staff' && req.user.clinic_id) {
+        req.body.origin_clinic_id = req.user.clinic_id;
+      }
       const result = await this.patientService.registerPatient(req.body);
       return sendSuccess(res, 201, 'Đăng ký hồ sơ bệnh nhân thành công', result);
     } catch (error) {
@@ -31,6 +35,10 @@ class PatientController {
 
   async getPatientsV1(req, res, next) {
     try {
+      // Server-side Filter Enforcement
+      if (req.user && req.user.role === 'staff' && req.user.clinic_id) {
+        req.query.clinic_id = req.user.clinic_id;
+      }
       const result = await this.patientService.searchPatients(req.query);
       return sendSuccess(res, 200, 'Lấy danh sách bệnh nhân thành công', result);
     } catch (error) {

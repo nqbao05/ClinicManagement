@@ -17,6 +17,7 @@ const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const patientV1Routes = require('./modules/patients/patient.routes');
 const clinicRoutes = require('./modules/clinics/clinic.routes');
 const doctorRoutes = require('./modules/doctors/doctor.routes');
+const authRoutes = require('./modules/auth/auth.routes');
 const errorHandler = require('./common/middlewares/error.middleware');
 const NotFoundError = require('./common/errors/not-found.error');
 const swaggerDocument = require('./config/swagger');
@@ -87,6 +88,7 @@ function createApp(options = {}) {
   app.get('/openapi.json', (req, res) => res.json(swaggerDocument));
 
   // 5. RESTful API Routes V1
+  app.use('/api/v1/auth', options.authRoutes || authRoutes);
   app.use('/api/v1/clinics', options.clinicRoutes || clinicRoutes);
   app.use('/api/v1/doctors', options.doctorRoutes || doctorRoutes);
   app.use('/api/v1/patients', options.patientV1Routes || patientV1Routes);
