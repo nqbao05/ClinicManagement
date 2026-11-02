@@ -27,8 +27,21 @@ class AppointmentController {
     try {
       // Server-side Filter Enforcement
       if (req.user) {
-        if (req.user.role === 'patient' && req.user.patient_id) {
-          req.body.patient_id = req.user.patient_id;
+        if (req.user.role === 'patient') {
+          if (req.body.patient_id) {
+            const uId = req.user.user_id || req.user.id;
+            if (uId) {
+              try {
+                const { getDbPool } = require('../../config/database');
+                Promise.allSettled([
+                  getDbPool(1).query('UPDATE users SET patient_id = ? WHERE id = ?', [req.body.patient_id, uId]),
+                  getDbPool(2).query('UPDATE users SET patient_id = ? WHERE id = ?', [req.body.patient_id, uId])
+                ]).catch(() => {});
+              } catch (e) {}
+            }
+          } else if (req.user.patient_id) {
+            req.body.patient_id = req.user.patient_id;
+          }
         } else if (req.user.role === 'staff' && req.user.clinic_id) {
           req.body.clinic_id = req.user.clinic_id;
         }
@@ -61,8 +74,21 @@ class AppointmentController {
         if (req.user.role === 'staff' && req.user.clinic_id) {
           clinicId = req.user.clinic_id;
           req.query.clinic_id = req.user.clinic_id;
-        } else if (req.user.role === 'patient' && req.user.patient_id) {
-          req.query.patient_id = req.user.patient_id;
+        } else if (req.user.role === 'patient') {
+          let pId = req.user.patient_id;
+          const uId = req.user.user_id || req.user.id;
+          if (uId) {
+            try {
+              const { getDbPool } = require('../../config/database');
+              const [uRows] = await getDbPool(clinicId).query('SELECT patient_id FROM users WHERE id = ? LIMIT 1', [uId]);
+              if (uRows && uRows[0] && uRows[0].patient_id) {
+                pId = uRows[0].patient_id;
+              }
+            } catch (e) {}
+          }
+          if (pId) {
+            req.query.patient_id = pId;
+          }
         }
       }
 

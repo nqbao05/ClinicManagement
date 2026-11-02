@@ -67,7 +67,7 @@ class AuthService {
     }
 
     const passwordHash = hashPassword(password);
-    const assignedPatientId = role === 'patient' ? Math.floor(Math.random() * 8000) + 1000 : null;
+    const assignedPatientId = (role === 'patient' && registerData.patient_id) ? Number(registerData.patient_id) : null;
     const assignedClinicId = clinic_id || (role === 'staff' ? 1 : null);
 
     const newUser = await this.authRepository.createUser({
