@@ -210,7 +210,7 @@ class AppointmentRepository {
     const queryParams = [...params, limit, offset];
 
     const [rows] = await pool.query(
-      `SELECT a.id, a.id AS appointment_id, a.patient_id, a.doctor_id, a.clinic_id, 
+      `SELECT a.id, a.id AS appointment_id, a.patient_id, a.doctor_id, COALESCE(a.clinic_id, 1) AS clinic_id, 
               a.slot_time, a.status, a.created_at,
               d.full_name AS doctor_name, d.specialty AS doctor_specialty,
               p.full_name AS patient_name, p.phone_encrypted, p.citizen_id_encrypted

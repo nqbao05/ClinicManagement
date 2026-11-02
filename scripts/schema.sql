@@ -78,6 +78,7 @@ CREATE TABLE `users` (
   `username` VARCHAR(50) NOT NULL UNIQUE,
   `password_hash` VARCHAR(255) NOT NULL,
   `role` ENUM('admin', 'staff', 'doctor', 'patient') NOT NULL,
+  `clinic_id` INT DEFAULT 1,
   `patient_id` INT NULL,
   `doctor_id` INT NULL,
   `reset_token_hash` VARCHAR(255) NULL,
