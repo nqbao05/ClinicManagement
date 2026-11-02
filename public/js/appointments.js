@@ -384,6 +384,10 @@ async function handleBookingSubmit(e) {
   const cccd = document.getElementById('patient-cccd-input').value.trim();
   const fullName = document.getElementById('patient-name-input').value.trim();
   const phone = document.getElementById('patient-phone-input').value.trim();
+  const docSelectEl = document.getElementById('doctor-select');
+  if (docSelectEl && docSelectEl.value) {
+    state.doctorId = Number(docSelectEl.value);
+  }
 
   if (!state.selectedSlot) {
     showAlert('danger', 'Chưa chọn khung giờ', 'Vui lòng chọn 1 khung giờ khám trống để tiếp tục.');
@@ -437,14 +441,17 @@ async function handleBookingSubmit(e) {
       }
       effectivePatientId = regJson.data ? (regJson.data.id || regJson.data.patient_id) : null;
 
-      // Nếu đã tồn tại nhưng trước đó chưa load được, thử tìm lại
+      // Nếu đã tồn tại nhưng trước đó chưa load được, thử tìm lại qua API CCCD
       if (!effectivePatientId) {
-        const findRes = await fetch(`/api/v1/patients/by-cccd/${cccd}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const findJson = await findRes.json();
-        if (findJson.data) {
-          effectivePatientId = findJson.data.id || findJson.data.patient_id;
+        try {
+          const findRes = await fetch(`/api/v1/patients/by-cccd/${cccd}`);
+          const findJson = await findRes.json();
+          if (findJson.data) {
+            effectivePatientId = findJson.data.id || findJson.data.patient_id;
+            state.patientId = effectivePatientId;
+          }
+        } catch (e) {
+          console.warn('Fallback by-cccd error:', e);
         }
       }
     }

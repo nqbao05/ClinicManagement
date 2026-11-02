@@ -262,7 +262,7 @@ function createPatientV1Routes(service) {
   router.get('/', authenticate, authorize('admin', 'staff'), (req, res, next) => controller.getPatientsV1(req, res, next));
 
   // Tra cứu hồ sơ bệnh nhân theo CCCD tự động điền (Public/Auth)
-  router.get('/by-cccd/:cccd', authenticate, (req, res, next) => controller.getPatientByCccd(req, res, next));
+  router.get('/by-cccd/:cccd', (req, res, next) => controller.getPatientByCccd(req, res, next));
 
   // Tra cứu chi tiết hồ sơ bệnh nhân (Admin, Staff hoặc chính bệnh nhân đó)
   router.get('/:id', authenticate, authorizePatientSelf, (req, res, next) => controller.getPatientDetail(req, res, next));
