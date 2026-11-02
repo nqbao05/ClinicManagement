@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * Trích xuất JWT Token từ localStorage
  */
 function getAuthToken() {
-  return localStorage.getItem('access_token') || '';
+  return localStorage.getItem('access_token') || localStorage.getItem('clinic_auth_token') || (window.Auth && Auth.getToken()) || '';
 }
 
 /**

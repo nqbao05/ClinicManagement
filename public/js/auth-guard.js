@@ -7,13 +7,15 @@
 (function (window) {
   'use strict';
 
-  const TOKEN_KEY = 'clinic_auth_token';
-  const USER_KEY = 'clinic_auth_user';
+  const PRIMARY_TOKEN_KEY = 'access_token';
+  const LEGACY_TOKEN_KEY = 'clinic_auth_token';
+  const PRIMARY_USER_KEY = 'user_info';
+  const LEGACY_USER_KEY = 'clinic_auth_user';
 
   const Auth = {
     getToken() {
       try {
-        return localStorage.getItem(TOKEN_KEY);
+        return localStorage.getItem(PRIMARY_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
       } catch (e) {
         return null;
       }
@@ -21,7 +23,7 @@
 
     getUser() {
       try {
-        const raw = localStorage.getItem(USER_KEY);
+        const raw = localStorage.getItem(PRIMARY_USER_KEY) || localStorage.getItem(LEGACY_USER_KEY);
         return raw ? JSON.parse(raw) : null;
       } catch (e) {
         return null;
@@ -30,15 +32,19 @@
 
     setSession(token, user) {
       try {
-        localStorage.setItem(TOKEN_KEY, token);
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        localStorage.setItem(PRIMARY_TOKEN_KEY, token);
+        localStorage.setItem(LEGACY_TOKEN_KEY, token);
+        localStorage.setItem(PRIMARY_USER_KEY, JSON.stringify(user));
+        localStorage.setItem(LEGACY_USER_KEY, JSON.stringify(user));
       } catch (e) {}
     },
 
     clearSession() {
       try {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(PRIMARY_TOKEN_KEY);
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+        localStorage.removeItem(PRIMARY_USER_KEY);
+        localStorage.removeItem(LEGACY_USER_KEY);
       } catch (e) {}
       window.location.replace('/');
     },
@@ -188,8 +194,10 @@
     if (response.status === 401) {
       console.warn('[Navigation Guard] 401 Unauthorized detected - Tự động đăng xuất.');
       try {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
+        localStorage.removeItem(PRIMARY_TOKEN_KEY);
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+        localStorage.removeItem(PRIMARY_USER_KEY);
+        localStorage.removeItem(LEGACY_USER_KEY);
         sessionStorage.setItem('auth_notice', 'Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại!');
       } catch (e) {}
       window.location.replace('/');

@@ -16,8 +16,13 @@
   <script src="/js/auth-guard.js"></script>
   <script>
     (function() {
-      const token = localStorage.getItem('access_token');
-      const user = JSON.parse(localStorage.getItem('user_info') || '{}');
+      const token = localStorage.getItem('access_token') || localStorage.getItem('clinic_auth_token') || (window.Auth && Auth.getToken());
+      const rawUser = localStorage.getItem('user_info') || localStorage.getItem('clinic_auth_user') || (window.Auth && JSON.stringify(Auth.getUser()));
+      let user = {};
+      try {
+        user = JSON.parse(rawUser || '{}');
+      } catch (e) {}
+
       if (!token) {
         alert('Vui lòng đăng nhập để tiếp tục!');
         window.location.replace('/index.html');
