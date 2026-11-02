@@ -13,6 +13,7 @@ class PatientController {
     this.createPatient = this.createPatient.bind(this);
     this.getPatients = this.getPatients.bind(this);
     this.getPatientDetail = this.getPatientDetail.bind(this);
+    this.getPatientByCccd = this.getPatientByCccd.bind(this);
     this.getPatientById = this.getPatientById.bind(this);
     this.updatePatient = this.updatePatient.bind(this);
     this.deletePatient = this.deletePatient.bind(this);
@@ -41,6 +42,16 @@ class PatientController {
       }
       const result = await this.patientService.searchPatients(req.query);
       return sendSuccess(res, 200, 'Lấy danh sách bệnh nhân thành công', result);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  async getPatientByCccd(req, res, next) {
+    try {
+      const cccd = req.params.cccd || req.query.cccd;
+      const patient = await this.patientService.findByIdentityCard(cccd);
+      return sendSuccess(res, 200, 'Tra cứu hồ sơ bệnh nhân qua CCCD thành công', patient);
     } catch (error) {
       return next(error);
     }

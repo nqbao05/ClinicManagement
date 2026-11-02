@@ -644,6 +644,12 @@ class PatientRepository {
       params.push(bindex);
     }
 
+    const searchQuery = filters.q || filters.search || filters.full_name;
+    if (searchQuery) {
+      conditions.push('full_name LIKE ?');
+      params.push(`%${searchQuery}%`);
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     if (!this.useMemory) {
@@ -681,6 +687,11 @@ class PatientRepository {
     }
     if (filters.phone_number) {
       allRecords = allRecords.filter(r => r.phone_number === String(filters.phone_number).trim());
+    }
+    const memSearch = filters.q || filters.search || filters.full_name;
+    if (memSearch) {
+      const s = String(memSearch).toLowerCase();
+      allRecords = allRecords.filter(r => (r.full_name && r.full_name.toLowerCase().includes(s)));
     }
     const limit = Number(filters.limit) || 20;
     const offset = Number(filters.offset) || 0;

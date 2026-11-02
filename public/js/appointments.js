@@ -1,25 +1,9 @@
 /**
  * ========================================================
- * Appointments Management & Concurrency Control UI Logic
- * Phân hệ Đặt lịch khám bệnh - Thành viên 3
+ * Appointments Management & Booking UI Logic
+ * Phân hệ Đặt lịch & Tiếp đón Bệnh nhân (ClinicCare)
  * ========================================================
  */
-
-// Danh sách Bác sĩ tương ứng theo từng Node Chi nhánh CSDL (Sharding)
-const CLINIC_DOCTORS = {
-  1: [
-    { id: 1, name: 'BS. CKI Nguyễn Văn A', specialty: 'Khoa Tim Mạch' },
-    { id: 2, name: 'BS. CKII Lê Thị B', specialty: 'Khoa Nội' },
-    { id: 3, name: 'ThS.BS Hoàng Minh C', specialty: 'Khoa Nhi' },
-    { id: 4, name: 'BS. Đỗ Quang D', specialty: 'Khoa Mắt' }
-  ],
-  2: [
-    { id: 1, name: 'TS.BS Trần Văn C', specialty: 'Khoa Tim Mạch' },
-    { id: 2, name: 'BS. CKI Phạm Thị D', specialty: 'Khoa Cơ Xương Khớp' },
-    { id: 3, name: 'ThS.BS Vũ Hải E', specialty: 'Khoa Nhi' },
-    { id: 4, name: 'BS. CKII Nguyễn Minh F', specialty: 'Khoa Thần Kinh' }
-  ]
-};
 
 // Hàm định dạng giờ slot an toàn chống lệch Timezone UTC/Local
 function extractSlotTimeHHMM(slotTimeStr) {
@@ -44,10 +28,12 @@ const AFTERNOON_SLOTS = ['13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '
 // Trạng thái ứng dụng Frontend
 let state = {
   clinicId: 1,
-  doctorId: 1,
+  doctorId: null,
+  doctorsList: [],
   bookingDate: '',
   selectedSlot: null,
-  patientId: 101,
+  patientId: null,
+  citizenId: '',
   bookedSlots: new Set(),
   isSubmitting: false,
   isLoadingAppointments: false
@@ -61,13 +47,15 @@ function refreshIcons() {
 }
 
 // ========================================================
-// 1. ALERT BANNER SYSTEM (Thông báo trạng thái động)
+// 1. ALERT BANNER SYSTEM
 // ========================================================
 function showAlert(type, title, message) {
   const banner = document.getElementById('alert-banner');
   const titleEl = document.getElementById('alert-title');
   const msgEl = document.getElementById('alert-message');
   const iconEl = document.getElementById('alert-icon');
+
+  if (!banner || !titleEl || !msgEl || !iconEl) return;
 
   banner.className = `alert-banner mb-6 ${type === 'success' ? 'alert-success' : 'alert-danger'}`;
   titleEl.innerText = title;
@@ -81,429 +69,472 @@ function showAlert(type, title, message) {
 
   banner.classList.remove('hidden');
   refreshIcons();
-
-  // Tự cuộn nhẹ lên thông báo
-  banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function closeAlert() {
   const banner = document.getElementById('alert-banner');
-  banner.classList.add('hidden');
+  if (banner) banner.classList.add('hidden');
 }
 
 // ========================================================
-// 2. KHỞI TẠO BỘ CHỌN NGÀY VÀ BÁC SĨ THEO CƠ SỞ
+// 2. TẢI DANH SÁCH BÁC SĨ TỪ API
 // ========================================================
-function initDateInput() {
-  const dateInput = document.getElementById('booking-date');
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+async function fetchDoctors() {
+  const select = document.getElementById('doctor-select');
+  if (!select) return;
 
-  // Định dạng YYYY-MM-DD
-  const yyyy = tomorrow.getFullYear();
-  const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
-  const dd = String(tomorrow.getDate()).padStart(2, '0');
-  const defaultDate = `${yyyy}-${mm}-${dd}`;
+  try {
+    const res = await fetch('/api/v1/doctors?status=active', {
+      headers: {
+        'Accept': 'application/json',
+        ...(window.Auth && Auth.getAuthHeader ? Auth.getAuthHeader() : {})
+      }
+    });
+    const result = await res.json();
+    const doctors = result.data || result || [];
+    state.doctorsList = doctors;
 
-  dateInput.min = defaultDate;
-  dateInput.value = defaultDate;
-  state.bookingDate = defaultDate;
-}
+    select.innerHTML = '';
+    if (doctors.length === 0) {
+      select.innerHTML = '<option value="">Không có bác sĩ khả dụng</option>';
+      return;
+    }
 
-function updateDoctorOptions() {
-  const doctorSelect = document.getElementById('doctor-select');
-  const doctors = CLINIC_DOCTORS[state.clinicId] || [];
+    doctors.forEach((d, idx) => {
+      const opt = document.createElement('option');
+      opt.value = d.id || d.doctor_id;
+      opt.textContent = `${d.full_name} (${d.specialty})`;
+      if (idx === 0) {
+        opt.selected = true;
+        state.doctorId = Number(opt.value);
+      }
+      select.appendChild(opt);
+    });
 
-  doctorSelect.innerHTML = doctors
-    .map((doc) => `<option value="${doc.id}">${doc.name} - ${doc.specialty}</option>`)
-    .join('');
-
-  if (doctors.length > 0) {
-    state.doctorId = doctors[0].id;
-    doctorSelect.value = state.doctorId;
+    if (state.doctorId) {
+      loadDoctorBookedSlots();
+    }
+  } catch (err) {
+    console.error('Lỗi khi tải bác sĩ:', err);
+    select.innerHTML = '<option value="">Lỗi nạp danh sách bác sĩ</option>';
   }
 }
 
 // ========================================================
-// 3. TẠO LƯỚI KHUNG GIỜ KHÁM (INTERACTIVE TIME SLOTS GRID)
+// 3. TỰ ĐỘNG TRA CỨU HỒ SƠ QUA SỐ CCCD
 // ========================================================
-function renderTimeSlots() {
-  const morningContainer = document.getElementById('morning-slots-grid');
-  const afternoonContainer = document.getElementById('afternoon-slots-grid');
+let cccdDebounceTimer = null;
+function setupCccdLookup() {
+  const cccdInput = document.getElementById('patient-cccd-input');
+  const spinner = document.getElementById('cccd-lookup-spinner');
+  const nameInput = document.getElementById('patient-name-input');
+  const phoneInput = document.getElementById('patient-phone-input');
+  const idInput = document.getElementById('patient-id-input');
+  const hint = document.getElementById('cccd-status-hint');
 
-  morningContainer.innerHTML = MORNING_SLOTS.map((time) => createSlotButtonHtml(time)).join('');
-  afternoonContainer.innerHTML = AFTERNOON_SLOTS.map((time) => createSlotButtonHtml(time)).join('');
+  if (!cccdInput) return;
+
+  cccdInput.addEventListener('input', (e) => {
+    const val = e.target.value.trim();
+    clearTimeout(cccdDebounceTimer);
+
+    if (val.length !== 12) {
+      if (hint) hint.textContent = 'Vui lòng nhập đủ 12 số CCCD.';
+      return;
+    }
+
+    if (spinner) spinner.classList.remove('hidden');
+    if (hint) hint.textContent = 'Đang tra cứu dữ liệu bệnh nhân...';
+
+    cccdDebounceTimer = setTimeout(async () => {
+      try {
+        const token = (window.Auth && Auth.getToken()) || localStorage.getItem('access_token');
+        const res = await fetch(`/api/v1/patients/by-cccd/${val}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        const json = await res.json();
+
+        if (res.ok && json.data) {
+          const p = json.data;
+          state.patientId = p.id || p.patient_id;
+          if (idInput) idInput.value = `BN-${String(state.patientId).padStart(4, '0')}`;
+          if (nameInput) nameInput.value = p.full_name || '';
+          if (phoneInput) phoneInput.value = p.phone_number || '';
+          if (hint) hint.innerHTML = `<span class="text-emerald-700 font-semibold">✓ Đã tìm thấy hồ sơ bệnh nhân: <strong>${p.full_name}</strong></span>`;
+        } else {
+          state.patientId = null;
+          if (idInput) idInput.value = 'Hồ sơ mới (Sẽ tự tạo)';
+          if (hint) hint.innerHTML = `<span class="text-blue-700">Hồ sơ CCCD mới. Vui lòng nhập Họ tên và SĐT để hệ thống đăng ký tiếp đón.</span>`;
+        }
+      } catch (err) {
+        if (hint) hint.textContent = 'Không thể tra cứu CCCD trực tuyến.';
+      } finally {
+        if (spinner) spinner.classList.add('hidden');
+      }
+    }, 400);
+  });
 }
 
-function createSlotButtonHtml(time) {
-  const isBooked = state.bookedSlots.has(time);
-  const isSelected = state.selectedSlot === time;
-  const classes = ['slot-btn'];
+// ========================================================
+// 4. BỘ CHỌN KHUNG GIỜ KHÁM (SLOT GRID)
+// ========================================================
+function renderSlotButton(slot) {
+  const isBooked = state.bookedSlots.has(slot);
+  const isSelected = state.selectedSlot === slot;
 
-  if (isSelected) classes.push('selected');
-  if (isBooked) classes.push('booked');
+  let btnClass = 'slot-btn p-2.5 text-xs font-semibold rounded-xl border transition-all text-center ';
+  if (isBooked) {
+    btnClass += 'bg-slate-100 text-slate-400 border-slate-200 line-through cursor-not-allowed';
+  } else if (isSelected) {
+    btnClass += 'bg-blue-600 text-white border-blue-600 shadow-md ring-2 ring-blue-300';
+  } else {
+    btnClass += 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700';
+  }
 
   return `
     <button
       type="button"
-      data-slot="${time}"
-      class="${classes.join(' ')}"
       ${isBooked ? 'disabled' : ''}
-      onclick="handleSlotSelect('${time}')"
+      onclick="selectSlot('${slot}')"
+      class="${btnClass}"
     >
-      <i data-lucide="clock" class="w-3.5 h-3.5 opacity-70"></i>
-      <span>${time}</span>
+      ${slot}
     </button>
   `;
 }
 
-function handleSlotSelect(time) {
-  if (state.bookedSlots.has(time) || state.isSubmitting) return;
-
-  state.selectedSlot = time;
-
-  // Cập nhật giao diện nút slot
-  document.querySelectorAll('.slot-btn').forEach((btn) => {
-    const slotTime = btn.getAttribute('data-slot');
-    if (slotTime === time) {
-      btn.classList.add('selected');
-    } else {
-      btn.classList.remove('selected');
-    }
-  });
-
-  // Cập nhật preview và mở khóa nút Submit
-  const preview = document.getElementById('selected-slot-preview');
+function renderSlots() {
+  const morningContainer = document.getElementById('morning-slots-grid');
+  const afternoonContainer = document.getElementById('afternoon-slots-grid');
   const submitBtn = document.getElementById('btn-submit-booking');
+  const preview = document.getElementById('selected-slot-preview');
 
-  preview.innerHTML = `
-    <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold">
-      <i data-lucide="calendar-check" class="w-3.5 h-3.5"></i>
-      ${state.bookingDate} vào lúc ${time}
-    </span>
-  `;
-  submitBtn.disabled = false;
+  if (morningContainer) {
+    morningContainer.innerHTML = MORNING_SLOTS.map(renderSlotButton).join('');
+  }
+  if (afternoonContainer) {
+    afternoonContainer.innerHTML = AFTERNOON_SLOTS.map(renderSlotButton).join('');
+  }
+
+  if (state.selectedSlot) {
+    if (preview) preview.innerText = `${state.selectedSlot} ngày ${state.bookingDate}`;
+    if (submitBtn) submitBtn.removeAttribute('disabled');
+  } else {
+    if (preview) preview.innerText = 'Chưa chọn khung giờ nào';
+    if (submitBtn) submitBtn.setAttribute('disabled', 'true');
+  }
+
   refreshIcons();
 }
 
-// ========================================================
-// 4. GỌI API TRA CỨU SLOT ĐÃ ĐẶT VÀ CẬP NHẬT TRẠNG THÁI
-// ========================================================
+function selectSlot(slot) {
+  state.selectedSlot = slot;
+  renderSlots();
+}
+
+// Tải danh sách slot đã đặt của bác sĩ
 async function loadDoctorBookedSlots() {
   state.bookedSlots.clear();
-
-  try {
-    const url = `/api/v1/appointments?clinic_id=${state.clinicId}&date=${state.bookingDate}&doctor_id=${state.doctorId}&limit=50`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    const list = Array.isArray(data.data) ? data.data : (Array.isArray(data.data?.data) ? data.data.data : []);
-    if (res.ok && list.length > 0) {
-      list.forEach((apt) => {
-        const st = String(apt.status || '').toLowerCase();
-        if (st !== 'cancelled' && apt.slot_time) {
-          const hhmm = extractSlotTimeHHMM(apt.slot_time);
-          if (hhmm) {
-            state.bookedSlots.add(hhmm);
-          }
-        }
-      });
-    }
-  } catch (err) {
-    console.warn('Lỗi khi tải danh sách slot đã đặt:', err);
-  }
-
-  // Nếu slot đang chọn đã bị người khác đặt -> Bỏ chọn
-  if (state.selectedSlot && state.bookedSlots.has(state.selectedSlot)) {
-    state.selectedSlot = null;
-    document.getElementById('selected-slot-preview').innerText = 'Chưa chọn khung giờ nào';
-    document.getElementById('btn-submit-booking').disabled = true;
-  }
-
-  renderTimeSlots();
-  refreshIcons();
-}
-
-// ========================================================
-// 5. GỬI REQUEST ĐẶT LỊCH (XỬ LÝ ĐẶC TRỊ RACE CONDITION)
-// ========================================================
-async function handleBookingSubmit(e) {
-  e.preventDefault();
-
-  if (!state.selectedSlot) {
-    showAlert('danger', 'Chưa chọn giờ', 'Vui lòng chọn một khung giờ khám còn trống trong danh sách!');
+  if (!state.doctorId || !state.bookingDate) {
+    renderSlots();
     return;
   }
 
-  const patientIdInput = document.getElementById('patient-id-input');
-  const patientId = Number(patientIdInput.value);
-
-  if (!patientId || patientId <= 0) {
-    showAlert('danger', 'Mã bệnh nhân không hợp lệ', 'Vui lòng nhập mã ID bệnh nhân hợp lệ (số nguyên dương)!');
-    return;
-  }
-
-  const submitBtn = document.getElementById('btn-submit-booking');
-  state.isSubmitting = true;
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = `
-    <i data-lucide="loader" class="w-4 h-4 animate-spin"></i>
-    <span>Đang khóa slot & ghi vào CSDL...</span>
-  `;
-  refreshIcons();
-
-  const payload = {
-    patient_id: patientId,
-    doctor_id: Number(state.doctorId),
-    clinic_id: Number(state.clinicId),
-    slot_time: `${state.bookingDate}T${state.selectedSlot}:00`
-  };
-
   try {
-    const res = await fetch('/api/v1/appointments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+    const res = await fetch(`/api/v1/appointments?doctor_id=${state.doctorId}&date=${state.bookingDate}&limit=100`, {
+      headers: {
+        'Accept': 'application/json',
+        ...(window.Auth && Auth.getAuthHeader ? Auth.getAuthHeader() : {})
+      }
+    });
+    const json = await res.json();
+    const rows = (json.data && json.data.data) || json.data || [];
+
+    rows.forEach(item => {
+      if (item.status !== 'Cancelled' && item.status !== 'cancelled') {
+        const hhmm = extractSlotTimeHHMM(item.slot_time);
+        if (hhmm) state.bookedSlots.add(hhmm);
+      }
     });
 
-    const result = await res.json();
-
-    // ----------------------------------------------------
-    // TRƯỜNG HỢP 1: THÀNH CÔNG (201 CREATED)
-    // ----------------------------------------------------
-    if (res.status === 201) {
-      const apt = result.data;
-      showAlert(
-        'success',
-        'Đặt Lịch Khám Thành Công!',
-        `Mã lịch hẹn: #${apt.appointment_id} | Bác sĩ: ${apt.doctor_name || state.doctorId} | Thời gian: ${apt.slot_time}`
-      );
-
-      // Đánh dấu slot vừa đặt thành booked
-      state.bookedSlots.add(state.selectedSlot);
+    if (state.selectedSlot && state.bookedSlots.has(state.selectedSlot)) {
       state.selectedSlot = null;
-      document.getElementById('selected-slot-preview').innerText = 'Chưa chọn khung giờ nào';
-      submitBtn.disabled = true;
-
-      renderTimeSlots();
-      fetchAppointmentList();
-      return;
     }
-
-    // ----------------------------------------------------
-    // TRƯỜNG HỢP 2: XUNG ĐỘT RACE CONDITION (409 CONFLICT)
-    // ----------------------------------------------------
-    if (res.status === 409) {
-      showAlert(
-        'danger',
-        'Xung Đột Đặt Lịch (409 Conflict)',
-        result.message || 'Khung giờ này của bác sĩ vừa được một người khác hoàn tất đặt trước! Vui lòng chọn giờ khác.'
-      );
-
-      // Kích hoạt Fallback UI: Chuyển nút slot sang trạng thái conflict
-      const conflictBtn = document.querySelector(`.slot-btn[data-slot="${state.selectedSlot}"]`);
-      if (conflictBtn) {
-        conflictBtn.classList.remove('selected');
-        conflictBtn.classList.add('conflict');
-        conflictBtn.disabled = true;
-      }
-
-      state.bookedSlots.add(state.selectedSlot);
-      state.selectedSlot = null;
-      document.getElementById('selected-slot-preview').innerText = 'Chưa chọn khung giờ nào';
-      submitBtn.disabled = true;
-
-      // Tự động đồng bộ lại toàn bộ trạng thái CSDL
-      setTimeout(() => {
-        loadDoctorBookedSlots();
-        fetchAppointmentList();
-      }, 800);
-      return;
-    }
-
-    // ----------------------------------------------------
-    // TRƯỜNG HỢP 3: CÁC LỖI KHÁC (400, 404, 500)
-    // ----------------------------------------------------
-    throw new Error(result.message || `Lỗi máy chủ: HTTP ${res.status}`);
-
-  } catch (err) {
-    showAlert('danger', 'Không thể hoàn tất đặt lịch', err.message);
-  } finally {
-    state.isSubmitting = false;
-    submitBtn.innerHTML = `
-      <i data-lucide="calendar-plus" class="w-4 h-4"></i>
-      <span>Xác Nhận Đặt Lịch</span>
-    `;
-    if (!state.selectedSlot) {
-      submitBtn.disabled = true;
-    }
-    refreshIcons();
+  } catch (e) {
+    console.warn('Lỗi lấy slot đã đặt:', e);
   }
+
+  renderSlots();
 }
 
 // ========================================================
-// 6. RENDER BẢNG DANH SÁCH LỊCH HẸN (3 TRẠNG THÁI MẠNG)
+// 5. DANH SÁCH LỊCH HẸN & CHỨC NĂNG HỦY LỊCH
 // ========================================================
 async function fetchAppointmentList() {
   const tbody = document.getElementById('appointments-table-body');
-  const countBadge = document.getElementById('total-appointments-badge');
+  const badge = document.getElementById('total-appointments-badge');
+  if (!tbody) return;
 
-  // TRẠNG THÁI 1: LOADING SKELETON
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="5" class="p-6">
-        <div class="space-y-3 animate-pulse">
-          <div class="h-4 bg-slate-200 rounded w-full"></div>
-          <div class="h-4 bg-slate-100 rounded w-5/6"></div>
-          <div class="h-4 bg-slate-200 rounded w-4/6"></div>
-        </div>
-      </td>
-    </tr>
-  `;
+  tbody.innerHTML = `<tr><td colspan="6" class="px-3.5 py-4 text-center text-xs text-slate-400">Đang tải danh sách lịch khám...</td></tr>`;
 
   try {
-    const url = `/api/v1/appointments?clinic_id=${state.clinicId}&date=${state.bookingDate}&limit=50`;
-    const res = await fetch(url);
-    const result = await res.json();
+    const res = await fetch('/api/v1/appointments?limit=50', {
+      headers: {
+        'Accept': 'application/json',
+        ...(window.Auth && Auth.getAuthHeader ? Auth.getAuthHeader() : {})
+      }
+    });
+    const json = await res.json();
+    const list = (json.data && json.data.data) || json.data || [];
 
-    if (!res.ok) {
-      throw new Error(result.message || `Lỗi HTTP ${res.status}`);
-    }
+    if (badge) badge.innerText = list.length;
 
-    const appointments = Array.isArray(result.data) ? result.data : (Array.isArray(result.data?.data) ? result.data.data : []);
-    countBadge.innerText = appointments.length;
-
-    // TRẠNG THÁI 2: SUCCESS EMPTY STATE
-    if (appointments.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="5" class="py-12 text-center text-slate-400">
-            <div class="flex flex-col items-center justify-center space-y-2">
-              <i data-lucide="calendar-x-2" class="w-8 h-8 text-slate-300"></i>
-              <p class="font-medium text-slate-600 text-sm">Chưa có lịch hẹn nào</p>
-              <p class="text-xs text-slate-400">Chưa có ca khám nào được đặt vào ngày ${state.bookingDate} tại cơ sở này.</p>
-            </div>
-          </td>
-        </tr>
-      `;
-      refreshIcons();
+    if (list.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="px-3.5 py-6 text-center text-xs text-slate-400">Chưa có lịch hẹn khám nào được ghi nhận.</td></tr>`;
       return;
     }
 
-    // TRẠNG THÁI 3: SUCCESS DATA RENDER
-    tbody.innerHTML = appointments
-      .map((item) => {
-        const timeStr = extractSlotTimeHHMM(item.slot_time) || '--:--';
-        const isConfirmed = item.status === 'Confirmed';
-        return `
-          <tr class="hover:bg-slate-50 transition-colors border-b border-slate-100">
-            <td class="px-3.5 py-3 font-mono font-bold text-xs text-slate-500">#${item.appointment_id}</td>
-            <td class="px-3.5 py-3">
-              <div class="font-semibold text-slate-800 text-xs">${item.patient_name || `Mã BN #${item.patient_id}`}</div>
-              ${(item.patient_phone || item.phone_number) ? `<div class="text-[11px] text-slate-400 font-mono">${item.patient_phone || item.phone_number}</div>` : ''}
-            </td>
-            <td class="px-3.5 py-3">
-              <div class="font-medium text-slate-700 text-xs">${item.doctor_name || `Bác sĩ #${item.doctor_id}`}</div>
-              <div class="text-[11px] text-blue-600">${item.doctor_specialty || ''}</div>
-            </td>
-            <td class="px-3.5 py-3 font-mono font-bold text-xs text-slate-700">${timeStr}</td>
-            <td class="px-3.5 py-3 text-right">
-              <span class="inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
-                isConfirmed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
-              }">
-                ${item.status}
-              </span>
-            </td>
-          </tr>
-        `;
-      })
-      .join('');
+    tbody.innerHTML = list.map(item => {
+      const isCancelled = item.status === 'Cancelled' || item.status === 'cancelled';
+      const isCompleted = item.status === 'Completed' || item.status === 'completed';
+      
+      let badgeHtml = '';
+      if (isCancelled) {
+        badgeHtml = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">Đã Hủy</span>';
+      } else if (isCompleted) {
+        badgeHtml = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">Hoàn Tất</span>';
+      } else {
+        badgeHtml = '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">Chờ Khám</span>';
+      }
+
+      const slotDisplay = extractSlotTimeHHMM(item.slot_time) || item.slot_time;
+      const appId = item.id || item.appointment_id;
+
+      return `
+        <tr class="hover:bg-slate-50 transition-colors text-xs">
+          <td class="px-3.5 py-2.5 font-mono font-bold text-slate-700">#${appId}</td>
+          <td class="px-3.5 py-2.5">
+            <div class="font-bold text-slate-900">${item.patient_name || 'Bệnh nhân #' + item.patient_id}</div>
+            <div class="text-[10px] text-slate-500 font-mono">${item.phone_number || ''}</div>
+          </td>
+          <td class="px-3.5 py-2.5">
+            <div class="font-medium text-slate-800">${item.doctor_name || 'Bác sĩ #' + item.doctor_id}</div>
+            <div class="text-[10px] text-slate-400">${item.doctor_specialty || ''}</div>
+          </td>
+          <td class="px-3.5 py-2.5 font-mono font-semibold text-blue-700">${slotDisplay}</td>
+          <td class="px-3.5 py-2.5">${badgeHtml}</td>
+          <td class="px-3.5 py-2.5 text-right">
+            ${!isCancelled && !isCompleted ? `
+              <button
+                onclick="cancelAppointment(${appId})"
+                class="px-2 py-1 text-[11px] font-semibold text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-200 transition-all"
+              >
+                Hủy Lịch
+              </button>
+            ` : '<span class="text-slate-300">-</span>'}
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     refreshIcons();
   } catch (err) {
-    // TRẠNG THÁI 4: ERROR FALLBACK UI
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5" class="p-6 text-center text-red-600 bg-red-50/50">
-          <div class="flex flex-col items-center justify-center space-y-2">
-            <i data-lucide="alert-triangle" class="w-7 h-7 text-red-500"></i>
-            <p class="font-bold text-xs">Không thể tải danh sách lịch khám</p>
-            <p class="text-[11px] text-red-500 max-w-xs">${err.message}</p>
-            <button onclick="fetchAppointmentList()" class="mt-2 px-3 py-1 bg-white border border-red-300 hover:bg-red-50 text-red-700 rounded-md text-xs font-semibold shadow-sm">
-              Thử lại ngay
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-    refreshIcons();
+    console.error('Lỗi khi tải lịch khám:', err);
+    tbody.innerHTML = `<tr><td colspan="6" class="px-3.5 py-4 text-center text-xs text-rose-500">Không thể kết nối đến máy chủ.</td></tr>`;
+  }
+}
+
+// Xử lý Hủy lịch khám
+async function cancelAppointment(appointmentId) {
+  if (!confirm(`Bạn có chắc chắn muốn hủy lịch hẹn khám #${appointmentId}?`)) return;
+
+  try {
+    const token = (window.Auth && Auth.getToken()) || localStorage.getItem('access_token');
+    const res = await fetch(`/api/v1/appointments/${appointmentId}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ status: 'Cancelled' })
+    });
+    const json = await res.json();
+
+    if (res.ok) {
+      showAlert('success', 'Hủy lịch thành công', `Lịch khám #${appointmentId} đã được hủy bỏ an toàn.`);
+      fetchAppointmentList();
+      loadDoctorBookedSlots();
+    } else {
+      showAlert('danger', 'Hủy lịch thất bại', json.message || 'Không thể hủy lịch này.');
+    }
+  } catch (e) {
+    showAlert('danger', 'Lỗi kết nối', e.message);
   }
 }
 
 // ========================================================
-// 7. EVENT LISTENERS & KHỞI TẠO
+// 6. SUBMIT ĐẶT LỊCH KHÁM BỆNH
 // ========================================================
-document.addEventListener('DOMContentLoaded', () => {
-  initDateInput();
+async function handleBookingSubmit(e) {
+  e.preventDefault();
+  if (state.isSubmitting) return;
 
-  // Nhận diện người dùng đang đăng nhập
-  const currentUser = window.Auth ? window.Auth.getUser() : null;
-  if (currentUser) {
-    if (currentUser.role === 'staff' && currentUser.clinic_id) {
-      state.clinicId = Number(currentUser.clinic_id);
-      const clinicSelect = document.getElementById('clinic-select');
-      if (clinicSelect) {
-        clinicSelect.value = String(currentUser.clinic_id);
-        clinicSelect.disabled = true;
-      }
-    } else if (currentUser.role === 'patient') {
-      const patientIdInput = document.getElementById('patient-id-input');
-      if (patientIdInput && currentUser.patient_id) {
-        patientIdInput.value = currentUser.patient_id;
-        patientIdInput.readOnly = true;
-      }
-    }
+  const cccd = document.getElementById('patient-cccd-input').value.trim();
+  const fullName = document.getElementById('patient-name-input').value.trim();
+  const phone = document.getElementById('patient-phone-input').value.trim();
+
+  if (!state.selectedSlot) {
+    showAlert('danger', 'Chưa chọn khung giờ', 'Vui lòng chọn 1 khung giờ khám trống để tiếp tục.');
+    return;
+  }
+  if (!cccd || cccd.length !== 12) {
+    showAlert('danger', 'CCCD không hợp lệ', 'Vui lòng nhập đúng 12 chữ số Căn cước công dân.');
+    return;
+  }
+  if (!fullName) {
+    showAlert('danger', 'Thiếu họ tên', 'Vui lòng nhập đầy đủ họ và tên bệnh nhân.');
+    return;
+  }
+  if (!phone || !/^0\d{9}$/.test(phone)) {
+    showAlert('danger', 'SĐT không hợp lệ', 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng số 0.');
+    return;
   }
 
-  updateDoctorOptions();
-  renderTimeSlots();
-  loadDoctorBookedSlots();
+  state.isSubmitting = true;
+  const submitBtn = document.getElementById('btn-submit-booking');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i><span>Đang xử lý đặt lịch...</span>`;
+    refreshIcons();
+  }
+
+  try {
+    const token = (window.Auth && Auth.getToken()) || localStorage.getItem('access_token');
+    
+    // Nếu bệnh nhân chưa có patientId, tiến hành tạo hồ sơ bệnh nhân tự động
+    let effectivePatientId = state.patientId;
+    if (!effectivePatientId) {
+      const regRes = await fetch('/api/v1/patients', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          origin_clinic_id: 1,
+          full_name: fullName,
+          citizen_id: cccd,
+          phone_number: phone,
+          gender: 'Khac',
+          date_of_birth: '1995-01-01'
+        })
+      });
+      const regJson = await regRes.json();
+      if (!regRes.ok && regRes.status !== 409) {
+        throw new Error(regJson.message || 'Không thể tạo mới hồ sơ bệnh nhân');
+      }
+      effectivePatientId = regJson.data ? (regJson.data.id || regJson.data.patient_id) : null;
+
+      // Nếu đã tồn tại nhưng trước đó chưa load được, thử tìm lại
+      if (!effectivePatientId) {
+        const findRes = await fetch(`/api/v1/patients/by-cccd/${cccd}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const findJson = await findRes.json();
+        if (findJson.data) {
+          effectivePatientId = findJson.data.id || findJson.data.patient_id;
+        }
+      }
+    }
+
+    if (!effectivePatientId) {
+      throw new Error('Không thể xác thực mã định danh bệnh nhân. Vui lòng thử lại!');
+    }
+
+    // Tiến hành Đặt lịch khám
+    const slotIso = `${state.bookingDate}T${state.selectedSlot}:00`;
+    const bookRes = await fetch('/api/v1/appointments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        clinic_id: 1,
+        doctor_id: Number(state.doctorId),
+        patient_id: Number(effectivePatientId),
+        slot_time: slotIso
+      })
+    });
+    const bookJson = await bookRes.json();
+
+    if (bookRes.ok) {
+      showAlert('success', 'Đặt lịch thành công!', `Lịch hẹn khám đã được xác nhận vào lúc ${state.selectedSlot} ngày ${state.bookingDate}.`);
+      state.selectedSlot = null;
+      loadDoctorBookedSlots();
+      fetchAppointmentList();
+    } else {
+      showAlert('danger', 'Đặt lịch thất bại', bookJson.message || 'Khung giờ này vừa bị trùng hoặc không khả dụng.');
+      loadDoctorBookedSlots();
+    }
+  } catch (err) {
+    showAlert('danger', 'Lỗi hệ thống', err.message);
+  } finally {
+    state.isSubmitting = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i data-lucide="calendar-plus" class="w-4 h-4"></i><span>Xác Nhận Đặt Lịch</span>`;
+      refreshIcons();
+    }
+  }
+}
+
+// ========================================================
+// 7. KHỞI CHẠY TRANG WEB
+// ========================================================
+document.addEventListener('DOMContentLoaded', () => {
+  // Gán ngày mặc định là ngày mai
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const yyyy = tomorrow.getFullYear();
+  const mm = String(tomorrow.getMonth() + 1).padStart(2, '0');
+  const dd = String(tomorrow.getDate()).padStart(2, '0');
+  const defaultDateStr = `${yyyy}-${mm}-${dd}`;
+
+  state.bookingDate = defaultDateStr;
+  const dateInput = document.getElementById('booking-date');
+  if (dateInput) {
+    dateInput.value = defaultDateStr;
+    dateInput.min = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
+    dateInput.addEventListener('change', (e) => {
+      state.bookingDate = e.target.value;
+      loadDoctorBookedSlots();
+    });
+  }
+
+  const docSelect = document.getElementById('doctor-select');
+  if (docSelect) {
+    docSelect.addEventListener('change', (e) => {
+      state.doctorId = Number(e.target.value);
+      loadDoctorBookedSlots();
+    });
+  }
+
+  const bookingForm = document.getElementById('booking-form');
+  if (bookingForm) {
+    bookingForm.addEventListener('submit', handleBookingSubmit);
+  }
+
+  setupCccdLookup();
+  fetchDoctors();
   fetchAppointmentList();
   refreshIcons();
-
-  // Khi đổi cơ sở khám bệnh
-  document.getElementById('clinic-select').addEventListener('change', (e) => {
-    state.clinicId = Number(e.target.value);
-    state.selectedSlot = null;
-    document.getElementById('selected-slot-preview').innerText = 'Chưa chọn khung giờ nào';
-    document.getElementById('btn-submit-booking').disabled = true;
-
-    updateDoctorOptions();
-    loadDoctorBookedSlots();
-    fetchAppointmentList();
-  });
-
-  // Khi đổi bác sĩ
-  document.getElementById('doctor-select').addEventListener('change', (e) => {
-    state.doctorId = Number(e.target.value);
-    state.selectedSlot = null;
-    document.getElementById('selected-slot-preview').innerText = 'Chưa chọn khung giờ nào';
-    document.getElementById('btn-submit-booking').disabled = true;
-
-    loadDoctorBookedSlots();
-  });
-
-  // Khi đổi ngày khám
-  document.getElementById('booking-date').addEventListener('change', (e) => {
-    state.bookingDate = e.target.value;
-    state.selectedSlot = null;
-    document.getElementById('selected-slot-preview').innerText = 'Chưa chọn khung giờ nào';
-    document.getElementById('btn-submit-booking').disabled = true;
-
-    loadDoctorBookedSlots();
-    fetchAppointmentList();
-  });
-
-  // Form Submit
-  document.getElementById('booking-form').addEventListener('submit', handleBookingSubmit);
 });
+
+window.selectSlot = selectSlot;
+window.cancelAppointment = cancelAppointment;
+window.fetchAppointmentList = fetchAppointmentList;
+window.loadDoctorBookedSlots = loadDoctorBookedSlots;
+window.closeAlert = closeAlert;

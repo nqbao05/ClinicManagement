@@ -34,6 +34,7 @@ CREATE TABLE `doctors` (
   `specialty` VARCHAR(100) NOT NULL,
   `phone` VARCHAR(20) NULL,
   `status` ENUM('active', 'inactive') DEFAULT 'active',
+  `is_deleted` TINYINT(1) DEFAULT 0,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_doctors_clinic` (`clinic_id`),
   INDEX `idx_doctors_specialty` (`specialty`)
@@ -123,6 +124,7 @@ CREATE TABLE `doctors` (
   `specialty` VARCHAR(100) NOT NULL,
   `phone` VARCHAR(20) NULL,
   `status` ENUM('active', 'inactive') DEFAULT 'active',
+  `is_deleted` TINYINT(1) DEFAULT 0,
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_doctors_clinic` (`clinic_id`),
   INDEX `idx_doctors_specialty` (`specialty`)

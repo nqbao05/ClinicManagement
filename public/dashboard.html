@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Báo Cáo Thống Kê Đa Node - TV4 Admin Dashboard</title>
+  <title>Báo Cáo Thống Kê Quản Trị - ClinicCare Hospital</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons CDN -->
@@ -32,23 +32,18 @@
               Admin Analytics
             </h1>
             <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200">
-              TV4 Enterprise
+              ClinicCare
             </span>
           </div>
-          <p class="text-xs text-slate-500">Phân hệ Thống kê & Phân tích tổng hợp đa Node CSDL (Sharding)</p>
+          <p class="text-xs text-slate-500">Báo Cáo Hoạt Động & Hiệu Suất Lâm Sàng Bệnh Viện</p>
         </div>
       </div>
 
-      <!-- Realtime Node Status Badges (Header Display) -->
-      <div class="hidden md:flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
-        <!-- Node 1: Hà Nội -->
-        <div id="header-node-hanoi" class="flex items-center gap-2 px-2.5 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
-          <span class="status-pulse online w-2 h-2 rounded-full bg-emerald-500"></span>
-          <div class="text-left">
-            <span class="block text-[10px] font-medium text-slate-500 uppercase">Node Hà Nội</span>
-            <span class="node-status-text text-xs font-bold text-emerald-600">ONLINE</span>
-          </div>
-        </div>
+      <!-- Hospital Status Indicator -->
+      <div class="hidden md:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-xs font-bold text-emerald-700">Hệ Thống Sẵn Sàng (Live)</span>
+      </div>
 
         <!-- Node 2: TP.HCM -->
         <div id="header-node-hcm" class="flex items-center gap-2 px-2.5 py-1 bg-white rounded-lg border border-slate-200 shadow-2xs">
@@ -64,15 +59,15 @@
       <nav class="flex items-center gap-1.5 sm:gap-2">
         <a href="/patients-ui" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
           <i data-lucide="users" class="w-4 h-4"></i>
-          <span class="hidden lg:inline">Bệnh Nhân (TV2)</span>
+          <span class="hidden lg:inline">Bệnh Nhân</span>
         </a>
         <a href="/appointments" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
           <i data-lucide="calendar" class="w-4 h-4"></i>
-          <span class="hidden lg:inline">Đặt Lịch (TV3)</span>
+          <span class="hidden lg:inline">Đặt Lịch Khám</span>
         </a>
         <a href="/dashboard" class="px-3 py-1.5 text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-lg shadow-2xs flex items-center gap-1.5">
           <i data-lucide="line-chart" class="w-4 h-4 text-indigo-600"></i>
-          <span>Thống Kê (TV4)</span>
+          <span>Thống Kê Quản Trị</span>
         </a>
         <a href="/api-docs" target="_blank" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all flex items-center gap-1.5">
           <i data-lucide="file-code-2" class="w-4 h-4 text-emerald-600"></i>
@@ -106,22 +101,7 @@
       </button>
     </div>
 
-    <!-- SYSTEM WARNING BANNER: CƠ CHẾ CHỊU LỖI PHÂN TÁN (FAULT-TOLERANCE) -->
-    <div id="system-warning-banner" class="hidden alert-banner-warning p-4 rounded-xl shadow-xs flex items-start gap-3">
-      <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0">
-        <i data-lucide="shield-alert" class="w-5 h-5"></i>
-      </div>
-      <div class="flex-1 space-y-1">
-        <div class="flex items-center gap-2">
-          <h4 class="font-bold text-sm text-amber-900">Cảnh Báo Gián Đoạn Kết Nối Node CSDL (Fault-Tolerant Mode)</h4>
-          <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-200 text-amber-900 rounded-full">Graceful Degradation</span>
-        </div>
-        <div id="system-warning-list" class="text-xs text-amber-800 space-y-1"></div>
-        <p class="text-[11px] text-amber-700 italic mt-1">
-          * Dashboard vẫn duy trì hiển thị an toàn số liệu từ các Node khả dụng mà không làm gián đoạn trải nghiệm của Quản trị viên.
-        </p>
-      </div>
-    </div>
+    
 
     <!-- ========================================================
          FILTER TOOLBAR (KHOẢNG THỜI GIAN BÁO CÁO)
@@ -415,7 +395,7 @@
        ======================================================== -->
   <footer class="bg-white border-t border-slate-200 py-4 mt-8">
     <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
-      Clinic Management System &copy; 2026. Phân hệ Admin Analytics (Thành viên 4) &middot; Clean Architecture &middot; Multi-Node MySQL Sharding.
+      ClinicCare Hospital Analytics &copy; 2026. Chuẩn Clean Architecture & Quản Trị Y Tế Tập Trung.
     </div>
   </footer>
 

@@ -143,7 +143,7 @@ class DoctorRepository {
 
     const pool = this.poolResolver(cId);
     const [result] = await pool.query(
-      `DELETE FROM doctors WHERE id = ? AND clinic_id = ?`,
+      `UPDATE doctors SET is_deleted = 1, status = 'inactive' WHERE id = ? AND clinic_id = ?`,
       [dId, cId]
     );
 
@@ -177,7 +177,7 @@ class DoctorRepository {
    */
   async findByClinic(clinicId, filters = {}) {
     const pool = this.poolResolver(clinicId);
-    let sql = `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, phone, status, created_at FROM doctors WHERE clinic_id = ?`;
+    let sql = `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, phone, status, created_at FROM doctors WHERE clinic_id = ? AND is_deleted = 0`;
     const params = [Number(clinicId)];
 
     // Hỗ trợ truyền specialty dạng string hoặc object filters
