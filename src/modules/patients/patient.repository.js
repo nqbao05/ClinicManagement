@@ -594,6 +594,39 @@ class PatientRepository {
     return result.changes > 0;
   }
 
+  /**
+   * Kiểm tra bệnh nhân có lịch hẹn pending hoặc confirmed hay không
+   * @param {number|string} clinicId 
+   * @param {number|string} patientId 
+   * @returns {Promise<boolean>}
+   */
+  async hasActiveAppointments(clinicId, patientId) {
+    if (!this.useMemory) {
+      try {
+        const pool = this.poolResolver(clinicId);
+        const [rows] = await pool.query(
+          `SELECT COUNT(*) AS total FROM appointments WHERE patient_id = ? AND LOWER(status) IN ('pending', 'confirmed')`,
+          [Number(patientId)]
+        );
+        return rows[0] && rows[0].total > 0;
+      } catch (err) {
+        console.warn('[PatientRepository.hasActiveAppointments] Fallback or error:', err.message);
+      }
+    }
+    const node = this.getNodeConnection(clinicId);
+    if (node && node.db) {
+      try {
+        const row = node.db.prepare(
+          `SELECT COUNT(*) AS total FROM appointments WHERE patient_id = ? AND LOWER(status) IN ('pending', 'confirmed')`
+        ).get(Number(patientId));
+        return row && row.total > 0;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
+  }
+
   async listPatients(clinicId, filters = {}) {
     const pool = this.poolResolver(clinicId);
     const conditions = [];

@@ -15,6 +15,7 @@ class AppointmentController {
     // Bind this cho các methods để sử dụng làm Express route handlers
     this.createAppointment = this.createAppointment.bind(this);
     this.getAppointments = this.getAppointments.bind(this);
+    this.getAppointmentById = this.getAppointmentById.bind(this);
     this.updateAppointmentStatus = this.updateAppointmentStatus.bind(this);
   }
 
@@ -70,6 +71,24 @@ class AppointmentController {
 
       // Trả về phản hồi thành công (200 OK)
       return sendSuccess(res, 200, 'Lấy danh sách lịch hẹn thành công', { data, pagination });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Lấy chi tiết lịch hẹn khám theo ID
+   * GET /api/v1/appointments/:id
+   */
+  async getAppointmentById(req, res, next) {
+    try {
+      const appointmentId = Number(req.params.id);
+      let clinicId = Number(req.query.clinic_id || req.headers['x-clinic-id'] || 1);
+      if (req.user && req.user.role === 'staff' && req.user.clinic_id) {
+        clinicId = req.user.clinic_id;
+      }
+      const appointment = await this.appointmentService.getById(clinicId, appointmentId);
+      return sendSuccess(res, 200, 'Lấy chi tiết lịch hẹn thành công', appointment);
     } catch (error) {
       return next(error);
     }

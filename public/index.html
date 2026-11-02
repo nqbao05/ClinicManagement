@@ -307,35 +307,62 @@
     </div>
 
     <!-- ========================================================
-         CỔNG TRUY CẬP 3 PHÂN HỆ NGHIỆP VỤ (VỚI ROUTE GUARD)
+         CỔNG TRUY CẬP 4 PHÂN HỆ NGHIỆP VỤ (VỚI ROUTE GUARD)
          ======================================================== -->
     <div id="modules-section" class="pt-8 border-t border-slate-200/80 space-y-6">
       <div class="text-center space-y-2 max-w-xl mx-auto">
         <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
-          Cổng Truy Cập 3 Phân Hệ Nghiệp Vụ
+          Cổng Truy Cập 4 Phân Hệ Nghiệp Vụ
         </h3>
         <p class="text-sm text-slate-500">
           Chọn một phân hệ bên dưới. Navigation Guard sẽ tự động kiểm tra vai trò người dùng trước khi cấp quyền truy cập.
         </p>
       </div>
 
-      <!-- Grid 3 Màn hình chính -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Grid 4 Màn hình chính -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         
+        <!-- Card TV1: Quản lý Bác sĩ & Phòng khám -->
+        <div onclick="navigateToModule('/doctors', ['admin', 'staff'])" class="cursor-pointer group bg-white p-5 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-cyan-400 transition-all flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 bg-cyan-50 text-cyan-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <i data-lucide="stethoscope" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 1</span>
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-cyan-100 text-cyan-700 rounded-full flex items-center gap-1">
+                  <i data-lucide="shield-check" class="w-3 h-3"></i> Quyền: Admin, Staff
+                </span>
+              </div>
+              <h3 class="text-base font-bold text-slate-900 group-hover:text-cyan-600 transition-colors">
+                Bác Sĩ & Cơ Sở
+              </h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Quản lý hồ sơ bác sĩ theo chi nhánh (Hà Nội, TP.HCM), lọc chuyên khoa, đổi trạng thái tiếp nhận và quản trị danh mục.
+              </p>
+            </div>
+          </div>
+          <div class="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-cyan-600">
+            <span>Truy cập phân hệ</span>
+            <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+          </div>
+        </div>
+
         <!-- Card TV2: Hồ sơ bệnh nhân -->
-        <div onclick="navigateToModule('/patients-ui', ['admin', 'staff'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-blue-300 transition-all flex flex-col justify-between">
+        <div onclick="navigateToModule('/patients-ui', ['admin', 'staff'])" class="cursor-pointer group bg-white p-5 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-blue-300 transition-all flex flex-col justify-between">
           <div class="space-y-4">
             <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <i data-lucide="users" class="w-6 h-6"></i>
             </div>
             <div>
-              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
                 <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 2</span>
                 <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
-                  <i data-lucide="stethoscope" class="w-3 h-3"></i> Quyền: Admin, Staff
+                  <i data-lucide="shield-check" class="w-3 h-3"></i> Quyền: Admin, Staff
                 </span>
               </div>
-              <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+              <h3 class="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                 Hồ Sơ Bệnh Nhân
               </h3>
               <p class="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -343,26 +370,26 @@
               </p>
             </div>
           </div>
-          <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+          <div class="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
             <span>Truy cập phân hệ</span>
             <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
           </div>
         </div>
 
         <!-- Card TV3: Đặt lịch khám bệnh -->
-        <div onclick="navigateToModule('/appointments', ['admin', 'staff', 'patient'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-emerald-300 transition-all flex flex-col justify-between">
+        <div onclick="navigateToModule('/appointments', ['admin', 'staff', 'patient'])" class="cursor-pointer group bg-white p-5 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-emerald-300 transition-all flex flex-col justify-between">
           <div class="space-y-4">
             <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <i data-lucide="calendar" class="w-6 h-6"></i>
             </div>
             <div>
-              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
                 <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 3</span>
                 <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 rounded-full flex items-center gap-1">
                   <i data-lucide="user-check" class="w-3 h-3"></i> Quyền: Mọi vai trò
                 </span>
               </div>
-              <h3 class="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+              <h3 class="text-base font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
                 Đặt Lịch Khám Bệnh
               </h3>
               <p class="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -370,26 +397,26 @@
               </p>
             </div>
           </div>
-          <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+          <div class="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
             <span>Truy cập phân hệ</span>
             <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
           </div>
         </div>
 
         <!-- Card TV4: Báo cáo Thống kê -->
-        <div onclick="navigateToModule('/dashboard', ['admin'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col justify-between">
+        <div onclick="navigateToModule('/dashboard', ['admin'])" class="cursor-pointer group bg-white p-5 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col justify-between">
           <div class="space-y-4">
             <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
               <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
             </div>
             <div>
-              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+              <div class="flex items-center gap-1.5 flex-wrap mb-1.5">
                 <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 4</span>
                 <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 rounded-full flex items-center gap-1">
                   <i data-lucide="shield-check" class="w-3 h-3"></i> Quyền: Chỉ Admin
                 </span>
               </div>
-              <h3 class="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+              <h3 class="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
                 Báo Cáo Thống Kê
               </h3>
               <p class="text-xs text-slate-500 mt-1 leading-relaxed">
@@ -397,7 +424,7 @@
               </p>
             </div>
           </div>
-          <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+          <div class="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
             <span>Truy cập phân hệ</span>
             <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
           </div>

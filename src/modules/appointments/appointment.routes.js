@@ -322,9 +322,83 @@ function createAppointmentV1Routes(service) {
    *               $ref: '#/components/schemas/AppointmentPaginationResponse'
    *       400:
    *         description: Tham số query không hợp lệ
+   * 
+   * /v1/appointments/{id}:
+   *   get:
+   *     tags: [Appointments (V1)]
+   *     summary: Tra cứu chi tiết thông tin lịch hẹn theo ID
+   *     security:
+   *       - BearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Mã định danh lịch hẹn
+   *       - in: query
+   *         name: clinic_id
+   *         schema:
+   *           type: integer
+   *           enum: [1, 2]
+   *         description: 'Mã cơ sở y tế (1: Hà Nội, 2: TP.HCM)'
+   *     responses:
+   *       200:
+   *         description: Thông tin chi tiết ca khám
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/AppointmentResponse'
+   *       404:
+   *         description: Không tìm thấy thông tin ca khám
+   * 
+   * /v1/appointments/{id}/status:
+   *   patch:
+   *     tags: [Appointments (V1)]
+   *     summary: Cập nhật trạng thái lịch hẹn khám (RBAC State Transition)
+   *     security:
+   *       - BearerAuth: []
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: Mã định danh lịch hẹn
+   *       - in: query
+   *         name: clinic_id
+   *         schema:
+   *           type: integer
+   *           enum: [1, 2]
+   *         description: Mã cơ sở y tế
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - status
+   *             properties:
+   *               status:
+   *                 type: string
+   *                 enum: [Pending, Confirmed, Completed, Cancelled]
+   *                 example: 'Confirmed'
+   *     responses:
+   *       200:
+   *         description: Cập nhật trạng thái ca khám thành công
+   *       400:
+   *         description: Trạng thái cập nhật không hợp lệ
+   *       403:
+   *         description: Không có quyền thao tác trên lịch hẹn này
+   *       404:
+   *         description: Không tìm thấy lịch hẹn
    */
   // Lấy danh sách lịch hẹn (admin, staff, patient)
   router.get('/', authenticate, authorize('admin', 'staff', 'patient'), controller.getAppointments);
+
+  // Lấy chi tiết lịch hẹn theo ID (admin, staff, patient)
+  router.get('/:id', authenticate, authorize('admin', 'staff', 'patient'), controller.getAppointmentById);
 
   // Cập nhật trạng thái lịch hẹn (admin, staff: Confirmed/Completed/Cancelled; patient: Cancelled)
   router.patch('/:id/status', authenticate, authorize('admin', 'staff', 'patient'), controller.updateAppointmentStatus);

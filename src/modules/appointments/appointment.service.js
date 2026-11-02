@@ -75,6 +75,19 @@ class AppointmentService {
       );
     }
 
+    // Chặn đặt lịch với bác sĩ không hoạt động
+    if (doctor.status && doctor.status !== 'active') {
+      throw new BadRequestError(`Bác sĩ [${doctor.full_name}] hiện đang tạm ngưng tiếp nhận lịch khám!`);
+    }
+
+    // Chặn đặt lịch cho bệnh nhân không tồn tại (patient_id ảo)
+    if (typeof this.appointmentRepository.findPatientById === 'function') {
+      const patient = await this.appointmentRepository.findPatientById(clinic_id, patient_id);
+      if (!patient) {
+        throw new NotFoundError('Hồ sơ bệnh nhân không tồn tại trên hệ thống phòng khám!');
+      }
+    }
+
     // 2. Ngăn chặn một bệnh nhân đặt trùng 2 ca khám cùng lúc
     const isDoubleBooked = await this.appointmentRepository.checkPatientDoubleBooking(
       clinic_id,
@@ -141,6 +154,21 @@ class AppointmentService {
         hasPrev: validatedQuery.page > 1
       }
     };
+  }
+
+  /**
+   * Tra cứu chi tiết lịch hẹn theo ID
+   * @param {number|string} clinicId 
+   * @param {number|string} id 
+   * @returns {Promise<Object>}
+   */
+  async getById(clinicId, id) {
+    const appointmentId = Number(id);
+    const appointment = await this.appointmentRepository.findById(clinicId, appointmentId);
+    if (!appointment) {
+      throw new NotFoundError(`Không tìm thấy thông tin ca khám #${appointmentId} tại chi nhánh!`);
+    }
+    return appointment;
   }
 
   /**

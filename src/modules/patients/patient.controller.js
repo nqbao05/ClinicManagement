@@ -102,6 +102,9 @@ class PatientController {
   async updatePatient(req, res, next) {
     try {
       const updatedPatient = await this.patientService.update(req.params.id, req.body);
+      if (req.baseUrl && req.baseUrl.includes('/v1')) {
+        return sendSuccess(res, 200, 'Cập nhật hồ sơ bệnh nhân thành công', updatedPatient);
+      }
       return res.status(200).json(updatedPatient);
     } catch (error) {
       return next(error);
@@ -111,6 +114,9 @@ class PatientController {
   async deletePatient(req, res, next) {
     try {
       const result = await this.patientService.remove(req.params.id);
+      if (req.baseUrl && req.baseUrl.includes('/v1')) {
+        return sendSuccess(res, 200, 'Xóa hồ sơ bệnh nhân thành công', result);
+      }
       return res.status(200).json(result);
     } catch (error) {
       return next(error);

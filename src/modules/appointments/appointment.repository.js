@@ -74,10 +74,28 @@ class AppointmentRepository {
     const pool = this._getPool(clinicId);
     const dId = Number(doctorId);
     const [rows] = await pool.query(
-      `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, created_at 
+      `SELECT id, id AS doctor_id, clinic_id, full_name, specialty, status, created_at 
        FROM doctors 
        WHERE id = ? AND clinic_id = ? LIMIT 1`,
       [dId, Number(clinicId)]
+    );
+    return rows.length > 0 ? rows[0] : null;
+  }
+
+  /**
+   * Tìm hồ sơ bệnh nhân theo ID tại chi nhánh
+   * @param {number|string} clinicId 
+   * @param {number|string} patientId 
+   * @returns {Promise<Object|null>}
+   */
+  async findPatientById(clinicId, patientId) {
+    const pool = this._getPool(clinicId);
+    const pId = Number(patientId);
+    const [rows] = await pool.query(
+      `SELECT id, id AS patient_id, origin_clinic_id, full_name, created_at 
+       FROM patients 
+       WHERE id = ? LIMIT 1`,
+      [pId]
     );
     return rows.length > 0 ? rows[0] : null;
   }

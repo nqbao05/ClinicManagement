@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản Lý Bác Sĩ & Phòng Khám - TV1 Medical Staff</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/css/doctors.css">
+  
+  <!-- Auth Navigation Guard -->
+  <script src="/js/auth-guard.js"></script>
+  <script>
+    (function() {
+      const token = localStorage.getItem('access_token');
+      const user = JSON.parse(localStorage.getItem('user_info') || '{}');
+      if (!token) {
+        alert('Vui lòng đăng nhập để tiếp tục!');
+        window.location.replace('/index.html');
+        return;
+      }
+      if (user.role !== 'admin' && user.role !== 'staff') {
+        alert('Chỉ Quản trị viên (Admin) hoặc Nhân viên mới có quyền truy cập trang quản lý bác sĩ!');
+        window.location.replace('/appointments.html');
+      }
+    })();
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans antialiased">
+
+  <!-- ========================================================
+       TOP NAVIGATION BAR
+       ======================================================== -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand & Module Identity -->
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-md flex items-center justify-center">
+          <i data-lucide="stethoscope" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+              Quản Lý Bác Sĩ & Cơ Sở
+            </h1>
+            <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-full border border-blue-200">
+              TV1 Medical Staff
+            </span>
+          </div>
+          <p class="text-xs text-slate-500">Phân hệ Quản trị Bác sĩ & Chi nhánh Đa Cơ Sở (Hà Nội &bull; TP.HCM)</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex items-center gap-1.5 sm:gap-2">
+        <a href="/doctors" class="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg shadow-2xs flex items-center gap-1.5">
+          <i data-lucide="stethoscope" class="w-4 h-4 text-blue-600"></i>
+          <span>Bác Sĩ (TV1)</span>
+        </a>
+        <a href="/patients-ui" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="users" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Bệnh Nhân (TV2)</span>
+        </a>
+        <a href="/appointments" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Đặt Lịch (TV3)</span>
+        </a>
+        <a href="/dashboard" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="bar-chart-3" class="w-4 h-4 text-indigo-600"></i>
+          <span class="hidden sm:inline">Thống Kê (TV4)</span>
+        </a>
+        <a href="/api-docs" target="_blank" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-all flex items-center gap-1.5">
+          <i data-lucide="file-code-2" class="w-4 h-4 text-emerald-600"></i>
+          <span class="hidden sm:inline">Swagger API</span>
+        </a>
+
+        <!-- Phân cách dọc & Khối phiên làm việc -->
+        <div class="h-6 w-px bg-slate-200 mx-1"></div>
+        <div id="auth-user-bar" class="flex items-center gap-2"></div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ========================================================
+       MAIN DASHBOARD AREA
+       ======================================================== -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+
+    <!-- Hero Card & Quick Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
+          <i data-lucide="user-check" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-slate-500">Tổng Số Bác Sĩ</div>
+          <div id="stat-total-doctors" class="text-2xl font-bold text-slate-900 mt-0.5">--</div>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+          <i data-lucide="activity" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-slate-500">Đang Hoạt Động</div>
+          <div id="stat-active-doctors" class="text-2xl font-bold text-emerald-600 mt-0.5">--</div>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+          <i data-lucide="building-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-slate-500">Cơ Sở 1: Hà Nội</div>
+          <div id="stat-hanoi-doctors" class="text-2xl font-bold text-slate-900 mt-0.5">--</div>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs flex items-center gap-4">
+        <div class="p-3 bg-purple-50 text-purple-600 rounded-xl">
+          <i data-lucide="building-2" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="text-xs font-medium text-slate-500">Cơ Sở 2: TP.HCM</div>
+          <div id="stat-hcm-doctors" class="text-2xl font-bold text-slate-900 mt-0.5">--</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter & Action Toolbar -->
+    <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        
+        <!-- Bộ lọc Shard & Chuyên khoa & Trạng thái -->
+        <div class="flex flex-wrap items-center gap-3">
+          <!-- Chi nhánh Shard Selector -->
+          <div class="flex items-center gap-2">
+            <label for="filter-clinic" class="text-xs font-bold text-slate-700 whitespace-nowrap">Cơ sở:</label>
+            <select id="filter-clinic" class="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="">Tất Cả Cơ Sở (Cross-Node)</option>
+              <option value="1">Cơ sở 1 - Hà Nội (clinic_hanoi)</option>
+              <option value="2">Cơ sở 2 - TP.HCM (clinic_hcm)</option>
+            </select>
+          </div>
+
+          <!-- Chuyên khoa Selector -->
+          <div class="flex items-center gap-2">
+            <label for="filter-specialty" class="text-xs font-bold text-slate-700 whitespace-nowrap">Chuyên khoa:</label>
+            <select id="filter-specialty" class="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="">Tất Cả Chuyên Khoa</option>
+              <option value="Khoa Tim Mạch">Khoa Tim Mạch</option>
+              <option value="Khoa Nội">Khoa Nội</option>
+              <option value="Khoa Nhi">Khoa Nhi</option>
+              <option value="Khoa Mắt">Khoa Mắt</option>
+              <option value="Khoa Cơ Xương Khớp">Khoa Cơ Xương Khớp</option>
+              <option value="Khoa Thần Kinh">Khoa Thần Kinh</option>
+              <option value="Khoa Tai Mũi Họng">Khoa Tai Mũi Họng</option>
+            </select>
+          </div>
+
+          <!-- Trạng thái Selector -->
+          <div class="flex items-center gap-2">
+            <label for="filter-status" class="text-xs font-bold text-slate-700 whitespace-nowrap">Trạng thái:</label>
+            <select id="filter-status" class="px-3 py-2 text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="all">Tất Cả Trạng Thái</option>
+              <option value="active">Đang Hoạt Động (Active)</option>
+              <option value="inactive">Tạm Ngưng (Inactive)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Search box & Thêm Bác sĩ button -->
+        <div class="flex items-center gap-3">
+          <div class="relative w-full sm:w-64">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="filter-search" placeholder="Tìm theo tên bác sĩ..." 
+                   class="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          </div>
+
+          <button id="btn-open-create-modal" class="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm transition flex items-center gap-1.5 whitespace-nowrap">
+            <i data-lucide="user-plus" class="w-4 h-4"></i>
+            <span>Thêm Bác Sĩ</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================================
+         DOCTORS LIST CONTAINER (3-STATE NETWORK RENDERING)
+         ======================================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+      
+      <!-- 1. LOADING SKELETON STATE -->
+      <div id="state-loading" class="p-8 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-slate-200 animate-pulse"></div>
+          <div class="space-y-2 flex-1">
+            <div class="h-4 bg-slate-200 rounded w-1/4 animate-pulse"></div>
+            <div class="h-3 bg-slate-100 rounded w-1/3 animate-pulse"></div>
+          </div>
+        </div>
+        <div class="space-y-3 pt-4">
+          <div class="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
+          <div class="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
+          <div class="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
+          <div class="h-10 bg-slate-100 rounded-xl animate-pulse"></div>
+        </div>
+      </div>
+
+      <!-- 2. ERROR FALLBACK STATE -->
+      <div id="state-error" class="hidden p-12 text-center space-y-4">
+        <div class="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto">
+          <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-800">Không Thể Tải Danh Sách Bác Sĩ</h3>
+          <p id="error-message" class="text-xs text-red-600 mt-1">Lỗi kết nối máy chủ dữ liệu phân tán</p>
+        </div>
+        <button onclick="loadDoctors()" class="px-4 py-2 text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition inline-flex items-center gap-1.5">
+          <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+          <span>Thử lại ngay</span>
+        </button>
+      </div>
+
+      <!-- 3. SUCCESS DATA TABLE STATE -->
+      <div id="state-success" class="hidden overflow-x-auto">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+              <th class="py-3.5 px-4">Mã Bác Sĩ</th>
+              <th class="py-3.5 px-4">Họ Và Tên</th>
+              <th class="py-3.5 px-4">Chuyên Khoa</th>
+              <th class="py-3.5 px-4">Cơ Sở Công Tác</th>
+              <th class="py-3.5 px-4">Số Điện Thoại</th>
+              <th class="py-3.5 px-4">Trạng Thái</th>
+              <th class="py-3.5 px-4 text-right">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody id="doctors-tbody" class="divide-y divide-slate-100">
+            <!-- Render danh sách bác sĩ động qua doctors.js -->
+          </tbody>
+        </table>
+
+        <!-- Empty state khi không có bản ghi phù hợp -->
+        <div id="state-empty" class="hidden p-12 text-center space-y-3">
+          <div class="w-12 h-12 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto">
+            <i data-lucide="user-x" class="w-6 h-6"></i>
+          </div>
+          <div class="text-slate-600 font-medium">Không tìm thấy bác sĩ nào phù hợp với bộ lọc</div>
+          <button onclick="resetFilters()" class="text-xs font-bold text-blue-600 hover:underline">Xóa bộ lọc để xem tất cả</button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================
+       MODAL: THÊM / SỬA BÁC SĨ (CREATE & UPDATE MODAL)
+       ======================================================== -->
+  <div id="doctor-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div id="modal-icon-container" class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+            <i data-lucide="stethoscope" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 id="modal-title" class="text-base font-bold text-slate-900 leading-tight">Thêm Bác Sĩ Mới</h3>
+            <p id="modal-desc" class="text-xs text-slate-500">Đăng ký thông tin bác sĩ công tác tại chi nhánh</p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="doctor-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <input type="hidden" id="form-doctor-id">
+        
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Cơ sở khám bệnh (Chi nhánh Shard) <span class="text-red-500">*</span></label>
+          <select id="form-clinic-id" required class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="1">Cơ sở 1 - Hà Nội (Node clinic_hanoi)</option>
+            <option value="2">Cơ sở 2 - TP.HCM (Node clinic_hcm)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Họ và tên bác sĩ <span class="text-red-500">*</span></label>
+          <input type="text" id="form-full-name" required placeholder="VD: BS. CKI Hoàng Thị Lan" 
+                 class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Chuyên khoa tiếp nhận <span class="text-red-500">*</span></label>
+          <input type="text" id="form-specialty" required placeholder="VD: Khoa Tim Mạch, Khoa Nhi..." 
+                 class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Số điện thoại liên hệ</label>
+          <input type="text" id="form-phone" placeholder="VD: 0901234567" 
+                 class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">Trạng thái hoạt động</label>
+          <select id="form-status" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            <option value="active">Đang hoạt động (active)</option>
+            <option value="inactive">Tạm ngưng tiếp nhận (inactive)</option>
+          </select>
+        </div>
+
+        <!-- Error notification inside modal -->
+        <div id="modal-error" class="hidden p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-xs"></div>
+
+        <!-- Modal Actions -->
+        <div class="pt-3 flex items-center justify-end gap-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition">
+            Hủy Bỏ
+          </button>
+          <button type="submit" id="btn-save-doctor" class="px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition flex items-center gap-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Lưu Thông Tin</span>
+          </button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="/js/doctors.js"></script>
+</body>
+</html>

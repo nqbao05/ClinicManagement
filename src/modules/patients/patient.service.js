@@ -129,6 +129,15 @@ class PatientService {
       throw new PatientNotFoundError(`Không tìm thấy hồ sơ bệnh nhân để xóa với ID: ${id}`);
     }
 
+    // Chặn xóa bệnh nhân nếu đang có lịch khám pending hoặc confirmed (Chống Orphan Appointments)
+    if (typeof this.patientRepository.hasActiveAppointments === 'function') {
+      const clinicId = existing.origin_clinic_id || 1;
+      const hasActive = await this.patientRepository.hasActiveAppointments(clinicId, id);
+      if (hasActive) {
+        throw new ConflictError('Không thể xóa hồ sơ bệnh nhân khi đang có lịch khám chờ tiếp nhận hoặc đã xác nhận!');
+      }
+    }
+
     await this.patientRepository.delete(id);
     return {
       success: true,
@@ -143,9 +152,15 @@ class PatientService {
     const data = validateCreatePatient(rawData);
     const clinicId = data.origin_clinic_id;
 
-    const existing = await this.patientRepository.findByCitizenId(clinicId, data.citizen_id);
+    // Chặn đăng ký trùng CCCD xuyên cơ sở (Cross-Node Conflict)
+    let existing = null;
+    if (typeof this.patientRepository.findByIdentityCard === 'function') {
+      existing = await this.patientRepository.findByIdentityCard(data.citizen_id);
+    } else if (typeof this.patientRepository.findByCitizenId === 'function') {
+      existing = await this.patientRepository.findByCitizenId(clinicId, data.citizen_id);
+    }
     if (existing) {
-      throw new ConflictError('Số CCCD này đã được đăng ký hồ sơ tại cơ sở!');
+      throw new ConflictError('Số CCCD này đã được đăng ký trên hệ thống phòng khám!');
     }
 
     try {
@@ -153,7 +168,7 @@ class PatientService {
       return createdPatient;
     } catch (error) {
       if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
-        throw new ConflictError('Số CCCD này đã được đăng ký hồ sơ tại cơ sở!');
+        throw new ConflictError('Số CCCD này đã được đăng ký trên hệ thống phòng khám!');
       }
       throw error;
     }

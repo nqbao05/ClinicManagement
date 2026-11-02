@@ -54,6 +54,14 @@ function createApp(options = {}) {
   const publicDir = path.join(__dirname, '../public');
   app.use(express.static(publicDir));
 
+  // Giao diện tĩnh: Quản lý Bác sĩ & Chi nhánh (TV1)
+  app.get('/doctors', (req, res) => {
+    res.sendFile(path.join(publicDir, 'doctors.html'));
+  });
+  app.get('/doctors-ui', (req, res) => {
+    res.sendFile(path.join(publicDir, 'doctors.html'));
+  });
+
   // Giao diện tĩnh: Hồ sơ Bệnh nhân (TV2)
   app.get('/patients', (req, res) => {
     res.sendFile(path.join(publicDir, 'patients.html'));

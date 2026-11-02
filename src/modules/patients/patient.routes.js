@@ -197,6 +197,58 @@ const { authenticate, authorize, authorizePatientSelf } = require('../../common/
  *         description: Lấy thông tin bệnh nhân thành công
  *       404:
  *         description: Không tìm thấy hồ sơ bệnh nhân
+ * 
+ *   put:
+ *     tags: [Patients (TV2 - Sharding & Profile Management)]
+ *     summary: Cập nhật thông tin hồ sơ bệnh nhân
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Mã định danh bệnh nhân
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               full_name: { type: string }
+ *               phone_number: { type: string }
+ *               gender: { type: string, enum: [male, female, other] }
+ *               date_of_birth: { type: string, format: date }
+ *               address: { type: string }
+ *               blood_type: { type: string }
+ *               medical_history: { type: string }
+ *     responses:
+ *       200:
+ *         description: Cập nhật hồ sơ bệnh nhân thành công
+ *       400:
+ *         description: Dữ liệu không hợp lệ
+ *       404:
+ *         description: Không tìm thấy bệnh nhân
+ * 
+ *   delete:
+ *     tags: [Patients (TV2 - Sharding & Profile Management)]
+ *     summary: Xóa hồ sơ bệnh nhân (Admin Only)
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Mã định danh bệnh nhân
+ *     responses:
+ *       200:
+ *         description: Xóa hồ sơ bệnh nhân thành công
+ *       404:
+ *         description: Không tìm thấy bệnh nhân
+ *       409:
+ *         description: Không thể xóa bệnh nhân đang có lịch khám chưa hoàn tất
  */
 function createPatientV1Routes(service) {
   const router = express.Router();
@@ -211,6 +263,12 @@ function createPatientV1Routes(service) {
 
   // Tra cứu chi tiết hồ sơ bệnh nhân (Admin, Staff hoặc chính bệnh nhân đó)
   router.get('/:id', authenticate, authorizePatientSelf, (req, res, next) => controller.getPatientDetail(req, res, next));
+
+  // Cập nhật hồ sơ bệnh nhân (Admin, Staff hoặc chính bệnh nhân đó)
+  router.put('/:id', authenticate, authorize('admin', 'staff', 'patient'), authorizePatientSelf, (req, res, next) => controller.updatePatient(req, res, next));
+
+  // Xóa hồ sơ bệnh nhân (Chỉ Quản trị viên Admin)
+  router.delete('/:id', authenticate, authorize('admin'), (req, res, next) => controller.deletePatient(req, res, next));
 
   return router;
 }
