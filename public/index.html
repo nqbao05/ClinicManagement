@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cổng Điều Hướng Hệ Thống - Clinic Management System</title>
+  <title>ClinicCare - Cổng Điều Hướng & Xác Thực Hệ Thống</title>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -12,25 +12,27 @@
   <!-- Auth Guard Script -->
   <script src="/js/auth-guard.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col font-sans selection:bg-blue-500 selection:text-white">
+<body class="bg-slate-100 text-slate-900 min-h-screen flex flex-col font-sans selection:bg-blue-600 selection:text-white">
 
-  <!-- Header -->
+  <!-- ========================================================
+       TOP NAVIGATION BAR
+       ======================================================== -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
       <div class="flex items-center gap-3">
-        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-md">
+        <div class="p-2.5 bg-blue-600 text-white rounded-xl shadow-md flex items-center justify-center">
           <i data-lucide="activity" class="w-5 h-5"></i>
         </div>
         <div>
           <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">
             ClinicCare Distributed System
           </h1>
-          <p class="text-xs text-slate-500">Cổng Điều Hướng Tích Hợp (Enterprise Clean Architecture)</p>
+          <p class="text-xs text-slate-500">Phân Hệ Y Tế & Khám Bệnh Đa Cơ Sở (Modular Clean Architecture)</p>
         </div>
       </div>
       
       <div class="flex items-center gap-3">
-        <!-- Header User Session Bar -->
+        <!-- Header User Session Bar (Tự động cập nhật qua auth-guard.js) -->
         <div id="auth-user-bar" class="flex items-center gap-2"></div>
         
         <a href="/api-docs" target="_blank" class="px-3.5 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition flex items-center gap-1.5 shadow-2xs">
@@ -41,8 +43,10 @@
     </div>
   </header>
 
-  <!-- Main Portal -->
-  <main class="max-w-5xl mx-auto px-4 py-8 flex-1 w-full space-y-8">
+  <!-- ========================================================
+       MAIN CONTENT: FACEBOOK-STYLE LOGIN & HERO PORTAL
+       ======================================================== -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 flex-1 w-full space-y-12">
     
     <!-- Flash Notice Banner (Hiển thị khi Route Guard chặn điều hướng) -->
     <div id="auth-notice-banner" class="hidden p-4 bg-amber-50 border border-amber-300 rounded-2xl text-amber-900 flex items-center justify-between gap-3 shadow-xs">
@@ -51,7 +55,7 @@
           <i data-lucide="shield-alert" class="w-5 h-5"></i>
         </div>
         <div>
-          <h4 class="text-xs font-bold uppercase tracking-wider text-amber-800">Cảnh Báo Điều Hướng (Route Guard)</h4>
+          <h4 class="text-xs font-bold uppercase tracking-wider text-amber-800">Thông Báo Điều Hướng (Route Guard)</h4>
           <p id="auth-notice-text" class="text-xs text-amber-900 mt-0.5 font-medium"></p>
         </div>
       </div>
@@ -60,209 +64,346 @@
       </button>
     </div>
 
-    <!-- Section: Bảng Đăng Nhập & Chuyển Đổi Vai Trò Nhanh (RBAC Panel) -->
-    <section class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-        <div>
-          <span class="px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 rounded-full border border-indigo-200">
-            RBAC & Data Ownership Guard
-          </span>
-          <h3 class="text-xl font-extrabold text-slate-900 mt-1">
-            Xác Thực & Quản Lý Phiên Làm Việc
-          </h3>
-          <p class="text-xs text-slate-500 mt-0.5">
-            Đăng nhập để nhận JWT Bearer Token có hiệu lực 24h, bảo vệ 100% các endpoint phân hệ.
-          </p>
+    <!-- KHỐI ĐĂNG NHẬP / ĐĂNG KÝ CHUẨN FACEBOOK-STYLE -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      
+      <!-- Cột Trái: Giới thiệu thương hiệu & Điểm nổi bật -->
+      <div class="lg:col-span-7 space-y-5 text-center lg:text-left">
+        <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-100 text-blue-800 border border-blue-200 rounded-full text-xs font-bold uppercase tracking-wider">
+          <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+          <span>Distributed Monolith &bull; MySQL Sharding</span>
         </div>
+        
+        <h2 class="text-3xl sm:text-4xl lg:text-5xl font-black text-blue-600 tracking-tight leading-tight">
+          ClinicCare
+        </h2>
+        <p class="text-base sm:text-lg text-slate-600 leading-relaxed max-w-xl mx-auto lg:mx-0">
+          Nền tảng kết nối người bệnh và phòng khám đa cơ sở. Đăng nhập để đặt lịch khám bệnh, quản lý hồ sơ và theo dõi báo cáo thống kê.
+        </p>
 
-        <div id="session-badge-container">
-          <!-- Render trạng thái người dùng hiện hành -->
+        <!-- 3 Điểm nhấn hệ thống -->
+        <div class="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-xl mx-auto lg:mx-0 text-left">
+          <div class="p-3 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+            <div class="p-1.5 w-7 h-7 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center mb-2">
+              <i data-lucide="shield" class="w-4 h-4"></i>
+            </div>
+            <div class="text-xs font-bold text-slate-800">Bảo Mật PII</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Mã hóa AES-256 & Băm Blind Index CCCD, SĐT</div>
+          </div>
+
+          <div class="p-3 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+            <div class="p-1.5 w-7 h-7 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center mb-2">
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+            </div>
+            <div class="text-xs font-bold text-slate-800">Đặt Lịch 2 Lớp</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Khóa bi quan FOR UPDATE + ER_DUP_ENTRY</div>
+          </div>
+
+          <div class="p-3 bg-white border border-slate-200 rounded-2xl shadow-2xs">
+            <div class="p-1.5 w-7 h-7 bg-indigo-50 text-indigo-600 rounded-lg flex items-center justify-center mb-2">
+              <i data-lucide="layers" class="w-4 h-4"></i>
+            </div>
+            <div class="text-xs font-bold text-slate-800">MySQL Sharding</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">Phân mảnh CSDL Node Hà Nội & TP.HCM</div>
+          </div>
         </div>
       </div>
 
-      <!-- Quick 1-Click Login Cards for Demo/Grading -->
-      <div class="space-y-2">
-        <label class="text-xs font-bold text-slate-600 uppercase tracking-wider block">
-          Đăng Nhập Nhanh 1-Chạm (Quick Demo Logins):
-        </label>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <!-- Button 1: Admin -->
-          <button onclick="quickLogin('admin', 'Admin@123')" class="p-3 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-2xl text-left transition-all hover:scale-[1.02] flex flex-col justify-between">
-            <div class="flex items-center justify-between w-full">
-              <span class="p-1.5 bg-indigo-600 text-white rounded-lg text-xs">
-                <i data-lucide="shield-check" class="w-4 h-4"></i>
-              </span>
-              <span class="text-[10px] font-bold uppercase bg-indigo-200/60 text-indigo-800 px-1.5 py-0.5 rounded">Toàn quyền</span>
+      <!-- Cột Phải: Card Đăng Nhập / Đăng Ký (Facebook-style Auth Box) -->
+      <div class="lg:col-span-5 w-full max-w-md mx-auto">
+        <div class="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xl space-y-5">
+          
+          <!-- KHỐI 1: NẾU ĐÃ ĐĂNG NHẬP THÌ HIỂN THỊ TRẠNG THÁI TÀI KHOẢN -->
+          <div id="auth-logged-in-view" class="hidden space-y-4 text-center py-2">
+            <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full mx-auto flex items-center justify-center shadow-inner">
+              <i data-lucide="user-check" class="w-8 h-8"></i>
             </div>
-            <div class="mt-2">
-              <div class="text-xs font-bold text-slate-900">Quản Trị Viên</div>
-              <div class="text-[11px] text-slate-500">admin</div>
+            <div>
+              <span id="logged-user-role-badge" class="px-2.5 py-0.5 text-xs font-bold uppercase rounded-full"></span>
+              <h3 id="logged-user-name" class="text-xl font-extrabold text-slate-900 mt-1"></h3>
+              <p class="text-xs text-slate-500 mt-1">Phiên đăng nhập JWT đang hoạt động an toàn.</p>
             </div>
-          </button>
+            <div class="pt-2 flex flex-col gap-2">
+              <button onclick="scrollToModules()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl shadow-md transition">
+                Vào Ngay Các Phân Hệ &darr;
+              </button>
+              <button onclick="Auth.clearSession()" class="w-full py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 font-semibold text-xs rounded-xl transition">
+                Đăng Xuất Tài Khoản
+              </button>
+            </div>
+          </div>
 
-          <!-- Button 2: Staff Hà Nội -->
-          <button onclick="quickLogin('staff_hanoi', 'Staff@123')" class="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-2xl text-left transition-all hover:scale-[1.02] flex flex-col justify-between">
-            <div class="flex items-center justify-between w-full">
-              <span class="p-1.5 bg-blue-600 text-white rounded-lg text-xs">
-                <i data-lucide="building" class="w-4 h-4"></i>
-              </span>
-              <span class="text-[10px] font-bold uppercase bg-blue-200/60 text-blue-800 px-1.5 py-0.5 rounded">Shard 1</span>
+          <!-- KHỐI 2: NẾU CHƯA ĐĂNG NHẬP -> FORM ĐĂNG NHẬP / ĐĂNG KÝ (FACEBOOK STYLE) -->
+          <div id="auth-forms-view" class="space-y-4">
+            
+            <!-- Tab Switcher: Đăng Nhập / Đăng Ký -->
+            <div class="flex p-1 bg-slate-100 rounded-2xl border border-slate-200 text-xs font-bold">
+              <button id="tab-login-btn" onclick="switchAuthTab('login')" class="flex-1 py-2 text-center rounded-xl bg-white text-blue-600 shadow-xs transition">
+                Đăng Nhập
+              </button>
+              <button id="tab-register-btn" onclick="switchAuthTab('register')" class="flex-1 py-2 text-center rounded-xl text-slate-500 hover:text-slate-800 transition">
+                Đăng Ký Tài Khoản
+              </button>
             </div>
-            <div class="mt-2">
-              <div class="text-xs font-bold text-slate-900">Nhân viên HN</div>
-              <div class="text-[11px] text-slate-500">staff_hanoi</div>
-            </div>
-          </button>
 
-          <!-- Button 3: Staff TP.HCM -->
-          <button onclick="quickLogin('staff_hcm', 'Staff@123')" class="p-3 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-2xl text-left transition-all hover:scale-[1.02] flex flex-col justify-between">
-            <div class="flex items-center justify-between w-full">
-              <span class="p-1.5 bg-sky-600 text-white rounded-lg text-xs">
-                <i data-lucide="building-2" class="w-4 h-4"></i>
-              </span>
-              <span class="text-[10px] font-bold uppercase bg-sky-200/60 text-sky-800 px-1.5 py-0.5 rounded">Shard 2</span>
-            </div>
-            <div class="mt-2">
-              <div class="text-xs font-bold text-slate-900">Nhân viên HCM</div>
-              <div class="text-[11px] text-slate-500">staff_hcm</div>
-            </div>
-          </button>
+            <!-- Error message feedback -->
+            <div id="auth-error-msg" class="hidden p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 font-medium"></div>
 
-          <!-- Button 4: Patient -->
-          <button onclick="quickLogin('patient', 'Patient@123')" class="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-2xl text-left transition-all hover:scale-[1.02] flex flex-col justify-between">
-            <div class="flex items-center justify-between w-full">
-              <span class="p-1.5 bg-emerald-600 text-white rounded-lg text-xs">
-                <i data-lucide="user" class="w-4 h-4"></i>
-              </span>
-              <span class="text-[10px] font-bold uppercase bg-emerald-200/60 text-emerald-800 px-1.5 py-0.5 rounded">Đặt lịch</span>
-            </div>
-            <div class="mt-2">
-              <div class="text-xs font-bold text-slate-900">Bệnh Nhân</div>
-              <div class="text-[11px] text-slate-500">patient</div>
-            </div>
-          </button>
+            <!-- FORM 1: ĐĂNG NHẬP (LOGIN) -->
+            <form id="login-form" onsubmit="handleFormLogin(event)" class="space-y-3.5">
+              <div>
+                <input 
+                  type="text" 
+                  id="login-username-input" 
+                  required
+                  placeholder="Tên đăng nhập (username)..." 
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+                >
+              </div>
+              <div>
+                <input 
+                  type="password" 
+                  id="login-password-input" 
+                  required
+                  placeholder="Mật khẩu..." 
+                  class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 focus:outline-none transition"
+                >
+              </div>
+
+              <button 
+                type="submit" 
+                id="login-submit-btn" 
+                class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-bold text-base rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <span>Đăng Nhập</span>
+              </button>
+
+              <div class="relative flex items-center justify-center pt-2">
+                <div class="border-t border-slate-200 w-full"></div>
+                <span class="bg-white px-3 text-xs text-slate-400 absolute font-medium">Hoặc</span>
+              </div>
+
+              <button 
+                type="button" 
+                onclick="switchAuthTab('register')"
+                class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl shadow-xs transition"
+              >
+                Tạo Tài Khoản Mới
+              </button>
+
+              <!-- Gợi ý tài khoản demo có sẵn trong hệ thống -->
+              <div class="pt-3 border-t border-slate-100 text-[11px] text-slate-500 space-y-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">
+                <div class="font-bold text-slate-700">Tài khoản mặc định sẵn có:</div>
+                <div class="flex items-center justify-between">
+                  <span>&bull; Admin: <code class="text-blue-600 font-mono">admin</code></span>
+                  <span>MK: <code class="text-slate-600 font-mono">Admin@123</code></span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>&bull; Staff HN: <code class="text-blue-600 font-mono">staff_hanoi</code></span>
+                  <span>MK: <code class="text-slate-600 font-mono">Staff@123</code></span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>&bull; Staff HCM: <code class="text-blue-600 font-mono">staff_hcm</code></span>
+                  <span>MK: <code class="text-slate-600 font-mono">Staff@123</code></span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span>&bull; Bệnh nhân: <code class="text-blue-600 font-mono">patient</code></span>
+                  <span>MK: <code class="text-slate-600 font-mono">Patient@123</code></span>
+                </div>
+              </div>
+            </form>
+
+            <!-- FORM 2: ĐĂNG KÝ (SIGN UP / REGISTER) -->
+            <form id="register-form" onsubmit="handleFormRegister(event)" class="hidden space-y-3">
+              <div>
+                <input 
+                  type="text" 
+                  id="reg-fullname-input" 
+                  placeholder="Họ và tên của bạn..." 
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:outline-none transition"
+                >
+              </div>
+
+              <div>
+                <input 
+                  type="text" 
+                  id="reg-username-input" 
+                  required
+                  placeholder="Tên đăng nhập (username, từ 3 ký tự)..." 
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:outline-none transition"
+                >
+              </div>
+
+              <div>
+                <input 
+                  type="text" 
+                  id="reg-phone-input" 
+                  placeholder="Số điện thoại di động..." 
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:outline-none transition"
+                >
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-600 mb-1">Vai trò</label>
+                  <select id="reg-role-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:outline-none">
+                    <option value="patient" selected>Bệnh Nhân</option>
+                    <option value="staff">Nhân Viên Y Tế</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-600 mb-1">Cơ sở (Shard)</label>
+                  <select id="reg-clinic-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:bg-white focus:outline-none">
+                    <option value="1">Cơ sở 1 - Hà Nội</option>
+                    <option value="2">Cơ sở 2 - TP.HCM</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <input 
+                  type="password" 
+                  id="reg-password-input" 
+                  required
+                  placeholder="Mật khẩu (ít nhất 4 ký tự)..." 
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:outline-none transition"
+                >
+              </div>
+
+              <div>
+                <input 
+                  type="password" 
+                  id="reg-confirm-password-input" 
+                  required
+                  placeholder="Nhập lại mật khẩu xác nhận..." 
+                  class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:bg-white focus:border-blue-600 focus:outline-none transition"
+                >
+              </div>
+
+              <button 
+                type="submit" 
+                id="reg-submit-btn" 
+                class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] text-white font-bold text-base rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <span>Tạo Tài Khoản Mới</span>
+              </button>
+
+              <div class="text-center pt-1">
+                <button 
+                  type="button" 
+                  onclick="switchAuthTab('login')"
+                  class="text-xs text-blue-600 hover:underline font-semibold"
+                >
+                  Đã có tài khoản? Đăng nhập ngay
+                </button>
+              </div>
+            </form>
+
+          </div>
+
         </div>
       </div>
 
-      <!-- Manual Login Form Toggle -->
-      <details class="group text-xs">
-        <summary class="cursor-pointer font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1">
-          <span>Hoặc đăng nhập thủ công với tài khoản khác</span>
-          <i data-lucide="chevron-down" class="w-3.5 h-3.5 transition-transform group-open:rotate-180"></i>
-        </summary>
-        <form id="manual-login-form" onsubmit="handleManualLogin(event)" class="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3 items-end">
-          <div class="flex-1 w-full space-y-1">
-            <label class="font-bold text-slate-700">Tên đăng nhập</label>
-            <input type="text" id="login-username" placeholder="Nhập tên đăng nhập..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition">
-          </div>
-          <div class="flex-1 w-full space-y-1">
-            <label class="font-bold text-slate-700">Mật khẩu</label>
-            <input type="password" id="login-password" placeholder="Nhập mật khẩu..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:border-blue-500 focus:outline-none transition">
-          </div>
-          <button type="submit" id="btn-submit-login" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow transition shrink-0 flex items-center gap-1.5">
-            <i data-lucide="log-in" class="w-4 h-4"></i>
-            <span>Đăng Nhập</span>
-          </button>
-        </form>
-      </details>
-    </section>
-
-    <div class="text-center space-y-2 max-w-xl mx-auto pt-2">
-      <span class="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-blue-100 text-blue-800 rounded-full border border-blue-200">
-        Modular Monolith &bull; MySQL Sharding
-      </span>
-      <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
-        Cổng Truy Cập 3 Phân Hệ Nghiệp Vụ
-      </h2>
-      <p class="text-sm text-slate-500">
-        Hệ thống tích hợp Navigation Guard tự động kiểm tra vai trò người dùng trước khi cấp quyền truy cập giao diện.
-      </p>
     </div>
 
-    <!-- Grid 3 Màn hình chính -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      
-      <!-- Card TV2: Hồ sơ bệnh nhân -->
-      <div onclick="navigateToModule('/patients-ui', ['admin', 'staff'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-md hover:border-blue-300 transition-all flex flex-col justify-between">
-        <div class="space-y-4">
-          <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <i data-lucide="users" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap mb-1.5">
-              <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 2</span>
-              <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
-                <i data-lucide="stethoscope" class="w-3 h-3"></i> Quyền: Admin, Staff
-              </span>
-            </div>
-            <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
-              Hồ Sơ Bệnh Nhân
-            </h3>
-            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-              Quản lý danh sách, đăng ký mới bệnh nhân với khóa phân mảnh <code>origin_clinic_id</code> và tra cứu Cross-Node song song.
-            </p>
-          </div>
-        </div>
-        <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
-          <span>Truy cập phân hệ</span>
-          <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
-        </div>
+    <!-- ========================================================
+         CỔNG TRUY CẬP 3 PHÂN HỆ NGHIỆP VỤ (VỚI ROUTE GUARD)
+         ======================================================== -->
+    <div id="modules-section" class="pt-8 border-t border-slate-200/80 space-y-6">
+      <div class="text-center space-y-2 max-w-xl mx-auto">
+        <h3 class="text-2xl sm:text-3xl font-extrabold text-slate-900">
+          Cổng Truy Cập 3 Phân Hệ Nghiệp Vụ
+        </h3>
+        <p class="text-sm text-slate-500">
+          Chọn một phân hệ bên dưới. Navigation Guard sẽ tự động kiểm tra vai trò người dùng trước khi cấp quyền truy cập.
+        </p>
       </div>
 
-      <!-- Card TV3: Đặt lịch khám bệnh -->
-      <div onclick="navigateToModule('/appointments', ['admin', 'staff', 'patient'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-300 transition-all flex flex-col justify-between">
-        <div class="space-y-4">
-          <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <i data-lucide="calendar" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap mb-1.5">
-              <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 3</span>
-              <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 rounded-full flex items-center gap-1">
-                <i data-lucide="user-check" class="w-3 h-3"></i> Quyền: Mọi vai trò
-              </span>
+      <!-- Grid 3 Màn hình chính -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Card TV2: Hồ sơ bệnh nhân -->
+        <div onclick="navigateToModule('/patients-ui', ['admin', 'staff'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-blue-300 transition-all flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <i data-lucide="users" class="w-6 h-6"></i>
             </div>
-            <h3 class="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
-              Đặt Lịch Khám Bệnh
-            </h3>
-            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-              Đặt lịch theo khung giờ Time Slot, tích hợp khóa bi quan (Pessimistic Lock) chống Race Condition và Concurrency Fallback UI.
-            </p>
-          </div>
-        </div>
-        <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
-          <span>Truy cập phân hệ</span>
-          <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
-        </div>
-      </div>
-
-      <!-- Card TV4: Báo cáo Thống kê -->
-      <div onclick="navigateToModule('/dashboard', ['admin'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between">
-        <div class="space-y-4">
-          <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-2 flex-wrap mb-1.5">
-              <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 4</span>
-              <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 rounded-full flex items-center gap-1">
-                <i data-lucide="shield-check" class="w-3 h-3"></i> Quyền: Chỉ Admin
-              </span>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 2</span>
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 rounded-full flex items-center gap-1">
+                  <i data-lucide="stethoscope" class="w-3 h-3"></i> Quyền: Admin, Staff
+                </span>
+              </div>
+              <h3 class="text-lg font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
+                Hồ Sơ Bệnh Nhân
+              </h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Quản lý danh sách, đăng ký mới bệnh nhân với khóa phân mảnh <code>origin_clinic_id</code> và tra cứu Cross-Node song song.
+              </p>
             </div>
-            <h3 class="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
-              Báo Cáo Thống Kê
-            </h3>
-            <p class="text-xs text-slate-500 mt-1 leading-relaxed">
-              Tổng hợp số liệu thời gian thực từ cả 2 Node CSDL qua Promise.allSettled, giám sát sức khỏe Node và phân tích chuyên khoa.
-            </p>
+          </div>
+          <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-blue-600">
+            <span>Truy cập phân hệ</span>
+            <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
           </div>
         </div>
-        <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
-          <span>Truy cập phân hệ</span>
-          <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
-        </div>
-      </div>
 
+        <!-- Card TV3: Đặt lịch khám bệnh -->
+        <div onclick="navigateToModule('/appointments', ['admin', 'staff', 'patient'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-emerald-300 transition-all flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <i data-lucide="calendar" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 3</span>
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 rounded-full flex items-center gap-1">
+                  <i data-lucide="user-check" class="w-3 h-3"></i> Quyền: Mọi vai trò
+                </span>
+              </div>
+              <h3 class="text-lg font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
+                Đặt Lịch Khám Bệnh
+              </h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Đặt lịch theo khung giờ Time Slot, tích hợp khóa bi quan (Pessimistic Lock) chống Race Condition và Concurrency Fallback UI.
+              </p>
+            </div>
+          </div>
+          <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-emerald-600">
+            <span>Truy cập phân hệ</span>
+            <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+          </div>
+        </div>
+
+        <!-- Card TV4: Báo cáo Thống kê -->
+        <div onclick="navigateToModule('/dashboard', ['admin'])" class="cursor-pointer group bg-white p-6 rounded-3xl border border-slate-200 shadow-xs hover:shadow-lg hover:border-indigo-300 transition-all flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+              <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 rounded">Thành viên 4</span>
+                <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-indigo-100 text-indigo-700 rounded-full flex items-center gap-1">
+                  <i data-lucide="shield-check" class="w-3 h-3"></i> Quyền: Chỉ Admin
+                </span>
+              </div>
+              <h3 class="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                Báo Cáo Thống Kê
+              </h3>
+              <p class="text-xs text-slate-500 mt-1 leading-relaxed">
+                Tổng hợp số liệu thời gian thực từ cả 2 Node CSDL qua Promise.allSettled, giám sát sức khỏe Node và phân tích chuyên khoa.
+              </p>
+            </div>
+          </div>
+          <div class="pt-4 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-indigo-600">
+            <span>Truy cập phân hệ</span>
+            <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+          </div>
+        </div>
+
+      </div>
     </div>
 
     <!-- Section Swagger UI API Documentation -->
@@ -292,77 +433,168 @@
 
   <!-- Footer -->
   <footer class="bg-white border-t border-slate-200 py-4">
-    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+    <div class="max-w-6xl mx-auto px-4 text-center text-xs text-slate-500">
       Clinic Management System &copy; 2026 &middot; Modular Monolith &middot; Clean Architecture &middot; MySQL Sharding.
     </div>
   </footer>
 
+  <!-- ========================================================
+       CLIENT-SIDE SCRIPTS
+       ======================================================== -->
   <script>
-    function updateSessionUI() {
+    function updateAuthStateUI() {
       const user = Auth.getUser();
-      const container = document.getElementById('session-badge-container');
-      if (!container) return;
+      const loggedView = document.getElementById('auth-logged-in-view');
+      const formsView = document.getElementById('auth-forms-view');
 
-      if (!user) {
-        container.innerHTML = `
-          <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-xl text-xs font-semibold">
-            <span class="w-2 h-2 rounded-full bg-slate-400"></span>
-            <span>Chưa đăng nhập (Khách vãng lai)</span>
-          </div>
-        `;
+      if (user) {
+        if (formsView) formsView.classList.add('hidden');
+        if (loggedView) {
+          loggedView.classList.remove('hidden');
+          const nameEl = document.getElementById('logged-user-name');
+          const badgeEl = document.getElementById('logged-user-role-badge');
+          if (nameEl) nameEl.textContent = user.username;
+          if (badgeEl) {
+            const roleLabels = {
+              admin: { text: 'Quản Trị Viên (Admin)', cls: 'bg-indigo-100 text-indigo-700' },
+              staff: { text: `Nhân Viên Y Tế (CS ${user.clinic_id || 1})`, cls: 'bg-blue-100 text-blue-700' },
+              patient: { text: 'Bệnh Nhân (Patient)', cls: 'bg-emerald-100 text-emerald-700' }
+            };
+            const roleInfo = roleLabels[user.role] || { text: user.role, cls: 'bg-slate-100 text-slate-700' };
+            badgeEl.className = `px-2.5 py-0.5 text-xs font-bold uppercase rounded-full ${roleInfo.cls}`;
+            badgeEl.textContent = roleInfo.text;
+          }
+        }
       } else {
-        const roleNames = {
-          admin: 'Quản Trị Viên (Admin)',
-          staff: `Nhân Viên Y Tế (Staff CS ${user.clinic_id || 1})`,
-          patient: 'Bệnh Nhân (Patient)'
-        };
-        container.innerHTML = `
-          <div class="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-semibold">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Đang đăng nhập: <strong>${user.username}</strong> - ${roleNames[user.role] || user.role}</span>
-          </div>
-        `;
+        if (loggedView) loggedView.classList.add('hidden');
+        if (formsView) formsView.classList.remove('hidden');
+      }
+
+      Auth.renderUserBar();
+    }
+
+    function switchAuthTab(tab) {
+      const loginForm = document.getElementById('login-form');
+      const regForm = document.getElementById('register-form');
+      const tabLoginBtn = document.getElementById('tab-login-btn');
+      const tabRegBtn = document.getElementById('tab-register-btn');
+      const errorMsg = document.getElementById('auth-error-msg');
+      if (errorMsg) errorMsg.classList.add('hidden');
+
+      if (tab === 'login') {
+        if (loginForm) loginForm.classList.remove('hidden');
+        if (regForm) regForm.classList.add('hidden');
+        if (tabLoginBtn) {
+          tabLoginBtn.className = 'flex-1 py-2 text-center rounded-xl bg-white text-blue-600 shadow-xs transition';
+        }
+        if (tabRegBtn) {
+          tabRegBtn.className = 'flex-1 py-2 text-center rounded-xl text-slate-500 hover:text-slate-800 transition';
+        }
+      } else {
+        if (loginForm) loginForm.classList.add('hidden');
+        if (regForm) regForm.classList.remove('hidden');
+        if (tabRegBtn) {
+          tabRegBtn.className = 'flex-1 py-2 text-center rounded-xl bg-white text-emerald-600 shadow-xs transition';
+        }
+        if (tabLoginBtn) {
+          tabLoginBtn.className = 'flex-1 py-2 text-center rounded-xl text-slate-500 hover:text-slate-800 transition';
+        }
       }
     }
 
-    async function quickLogin(username, password) {
-      const res = await Auth.login(username, password);
-      if (res.success) {
-        Auth.renderUserBar();
-        updateSessionUI();
-        dismissNotice();
-      } else {
-        alert(res.message);
-      }
-    }
-
-    async function handleManualLogin(e) {
+    async function handleFormLogin(e) {
       e.preventDefault();
-      const username = document.getElementById('login-username').value;
-      const password = document.getElementById('login-password').value;
+      const usernameInput = document.getElementById('login-username-input');
+      const passwordInput = document.getElementById('login-password-input');
+      const submitBtn = document.getElementById('login-submit-btn');
+      const errorMsg = document.getElementById('auth-error-msg');
+
+      const username = usernameInput ? usernameInput.value.trim() : '';
+      const password = passwordInput ? passwordInput.value : '';
+
       if (!username || !password) {
-        alert('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!');
+        showAuthError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!');
         return;
       }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>Đang xác thực...</span>';
+
       const res = await Auth.login(username, password);
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Đăng Nhập</span>';
+
       if (res.success) {
-        Auth.renderUserBar();
-        updateSessionUI();
+        updateAuthStateUI();
         dismissNotice();
-        document.getElementById('manual-login-form').reset();
       } else {
-        alert(res.message);
+        showAuthError(res.message);
+      }
+    }
+
+    async function handleFormRegister(e) {
+      e.preventDefault();
+      const submitBtn = document.getElementById('reg-submit-btn');
+      const fullName = document.getElementById('reg-fullname-input').value.trim();
+      const username = document.getElementById('reg-username-input').value.trim();
+      const phone = document.getElementById('reg-phone-input').value.trim();
+      const role = document.getElementById('reg-role-select').value;
+      const clinicId = Number(document.getElementById('reg-clinic-select').value);
+      const password = document.getElementById('reg-password-input').value;
+      const confirmPassword = document.getElementById('reg-confirm-password-input').value;
+
+      if (!username || !password) {
+        showAuthError('Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu!');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showAuthError('Mật khẩu xác nhận không khớp nhau!');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span>Đang tạo tài khoản...</span>';
+
+      const res = await Auth.register({
+        username,
+        password,
+        confirm_password: confirmPassword,
+        role,
+        clinic_id: clinicId,
+        full_name: fullName,
+        phone
+      });
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Tạo Tài Khoản Mới</span>';
+
+      if (res.success) {
+        updateAuthStateUI();
+        dismissNotice();
+      } else {
+        showAuthError(res.message);
+      }
+    }
+
+    function showAuthError(msg) {
+      const errorMsg = document.getElementById('auth-error-msg');
+      if (errorMsg) {
+        errorMsg.textContent = msg;
+        errorMsg.classList.remove('hidden');
       }
     }
 
     function navigateToModule(url, allowedRoles) {
       const user = Auth.getUser();
       if (!user) {
-        showNotice('Vui lòng chọn 1 tài khoản đăng nhập nhanh bên trên trước khi truy cập phân hệ này!');
+        showNotice('Vui lòng đăng nhập bằng biểu mẫu bên trên trước khi truy cập phân hệ!');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
       if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-        showNotice(`Tài khoản hiện tại (${user.username} - vai trò [${user.role}]) không có quyền truy cập trang này. Vui lòng chuyển sang vai trò phù hợp!`);
+        showNotice(`Tài khoản (${user.username}) có vai trò [${user.role}] không được phép truy cập phân hệ này!`);
         return;
       }
       window.location.href = url;
@@ -383,14 +615,18 @@
       if (banner) banner.classList.add('hidden');
     }
 
-    // Kiểm tra flash notice khi được redirect về từ guard
+    function scrollToModules() {
+      const el = document.getElementById('modules-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const flash = sessionStorage.getItem('auth_notice');
       if (flash) {
         showNotice(flash);
         sessionStorage.removeItem('auth_notice');
       }
-      updateSessionUI();
+      updateAuthStateUI();
       if (window.lucide && typeof window.lucide.createIcons === 'function') {
         window.lucide.createIcons();
       }

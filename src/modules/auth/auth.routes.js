@@ -40,6 +40,42 @@ const { authenticate } = require('../../common/middlewares/auth.middleware');
  *       401:
  *         description: Tên đăng nhập hoặc mật khẩu không chính xác
  * 
+ * /v1/auth/register:
+ *   post:
+ *     tags: [Authentication & RBAC]
+ *     summary: Đăng ký tài khoản người dùng mới (Patient / Staff)
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: 'nguyenvana'
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 example: 'Matkhau@123'
+ *               role:
+ *                 type: string
+ *                 enum: [patient, staff]
+ *                 default: patient
+ *               clinic_id:
+ *                 type: integer
+ *                 example: 1
+ *     responses:
+ *       201:
+ *         description: Đăng ký thành công và cấp JWT token
+ *       400:
+ *         description: Dữ liệu đăng ký không hợp lệ
+ *       409:
+ *         description: Tên đăng nhập đã tồn tại
+ * 
  * /v1/auth/me:
  *   get:
  *     tags: [Authentication & RBAC]
@@ -57,8 +93,9 @@ function createAuthRoutes(service) {
   const authService = service || new AuthService(new AuthRepository());
   const controller = createAuthController(authService);
 
-  // Tuyến công khai: Đăng nhập
+  // Tuyến công khai: Đăng nhập & Đăng ký
   router.post('/login', controller.login);
+  router.post('/register', controller.register);
 
   // Tuyến bảo vệ: Lấy thông tin cá nhân hiện hành
   router.get('/me', authenticate, controller.me);

@@ -68,6 +68,29 @@
     },
 
     /**
+     * Gọi API đăng ký tài khoản mới
+     * @param {Object} registerData 
+     * @returns {Promise<{ success: boolean, message?: string, data?: Object }>}
+     */
+    async register(registerData) {
+      try {
+        const res = await fetch('/api/v1/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(registerData)
+        });
+        const result = await res.json();
+        if (res.ok && result.success && result.data && result.data.token) {
+          this.setSession(result.data.token, result.data.user);
+          return { success: true, data: result.data };
+        }
+        return { success: false, message: result.message || 'Đăng ký không thành công' };
+      } catch (err) {
+        return { success: false, message: 'Lỗi mạng: Không thể kết nối tới máy chủ!' };
+      }
+    },
+
+    /**
      * Navigation Guard kiểm tra quyền truy cập trang ngay lập tức
      * @param {string[]} [allowedRoles=[]] Danh sách vai trò được phép (ví dụ: ['admin'])
      */

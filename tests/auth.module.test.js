@@ -104,6 +104,50 @@ test('Auth Module V1 - Integration & Security Tests', async (t) => {
     assert.strictEqual(meRes.body.data.clinic_id, 1);
   });
 
+  await t.test('POST /api/v1/auth/register - Đăng ký tài khoản mới thành công (201 Created)', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        username: 'new_patient_user',
+        password: 'Password@123',
+        confirm_password: 'Password@123',
+        role: 'patient',
+        full_name: 'Nguyễn Văn Mới'
+      });
+
+    assert.strictEqual(res.status, 201);
+    assert.strictEqual(res.body.success, true);
+    assert.ok(res.body.data.token);
+    assert.strictEqual(res.body.data.user.username, 'new_patient_user');
+    assert.strictEqual(res.body.data.user.role, 'patient');
+  });
+
+  await t.test('POST /api/v1/auth/register - Chặn đăng ký trùng tên đăng nhập (409 Conflict)', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        username: 'admin',
+        password: 'Password@123',
+        confirm_password: 'Password@123'
+      });
+
+    assert.strictEqual(res.status, 409);
+    assert.strictEqual(res.body.success, false);
+  });
+
+  await t.test('POST /api/v1/auth/register - Từ chối khi mật khẩu xác nhận không khớp (400 Bad Request)', async () => {
+    const res = await request(app)
+      .post('/api/v1/auth/register')
+      .send({
+        username: 'user_mismatch',
+        password: 'Password@123',
+        confirm_password: 'DifferentPassword@123'
+      });
+
+    assert.strictEqual(res.status, 400);
+    assert.strictEqual(res.body.success, false);
+  });
+
   await t.test('GET /api/v1/auth/me - Từ chối khi không có token (chế độ x-enforce-auth)', async () => {
     const res = await request(app)
       .get('/api/v1/auth/me')

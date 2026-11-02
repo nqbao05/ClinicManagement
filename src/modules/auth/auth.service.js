@@ -1,5 +1,5 @@
-const { UnauthorizedError } = require('../../common/errors');
-const { comparePassword } = require('../../common/utils/crypto.util');
+const { UnauthorizedError, ConflictError } = require('../../common/errors');
+const { comparePassword, hashPassword } = require('../../common/utils/crypto.util');
 const { signToken } = require('../../common/middlewares/auth.middleware');
 
 /**
@@ -49,6 +49,53 @@ class AuthService {
         role: user.role,
         clinic_id: user.clinic_id,
         patient_id: user.patient_id
+      }
+    };
+  }
+
+  /**
+   * Đăng ký tài khoản người dùng mới
+   * @param {Object} registerData 
+   * @returns {Promise<{ token: string, user: Object }>}
+   */
+  async register(registerData) {
+    const { username, password, role, clinic_id } = registerData;
+
+    const existing = await this.authRepository.findByUsername(username);
+    if (existing) {
+      throw new ConflictError('Tên đăng nhập đã tồn tại, vui lòng chọn tên khác!');
+    }
+
+    const passwordHash = hashPassword(password);
+    const assignedPatientId = role === 'patient' ? Math.floor(Math.random() * 8000) + 1000 : null;
+    const assignedClinicId = clinic_id || (role === 'staff' ? 1 : null);
+
+    const newUser = await this.authRepository.createUser({
+      username,
+      password_hash: passwordHash,
+      role: role || 'patient',
+      clinic_id: assignedClinicId,
+      patient_id: assignedPatientId
+    }, assignedClinicId || 1);
+
+    const payload = {
+      user_id: newUser.id,
+      username: newUser.username,
+      role: newUser.role,
+      clinic_id: newUser.clinic_id,
+      patient_id: newUser.patient_id
+    };
+
+    const token = signToken(payload);
+
+    return {
+      token,
+      user: {
+        id: newUser.id,
+        username: newUser.username,
+        role: newUser.role,
+        clinic_id: newUser.clinic_id,
+        patient_id: newUser.patient_id
       }
     };
   }
