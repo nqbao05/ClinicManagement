@@ -36,7 +36,7 @@ class DashboardRepository {
 
     // 2. Thống kê tổng số lượng bệnh nhân thuộc chi nhánh quản lý
     const [patientRows] = await pool.query(
-      `SELECT COUNT(*) AS total_patients 
+      `SELECT COUNT(id) AS total_patients 
        FROM patients`
     );
 

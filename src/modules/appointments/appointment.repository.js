@@ -195,7 +195,7 @@ class AppointmentRepository {
       `SELECT a.id, a.id AS appointment_id, a.patient_id, a.doctor_id, a.clinic_id, 
               a.slot_time, a.status, a.created_at,
               d.full_name AS doctor_name, d.specialty AS doctor_specialty,
-              p.full_name AS patient_name, p.phone_encrypted
+              p.full_name AS patient_name, p.phone_encrypted, p.citizen_id_encrypted
        FROM appointments a
        LEFT JOIN doctors d ON a.doctor_id = d.id
        LEFT JOIN patients p ON a.patient_id = p.id
@@ -214,14 +214,31 @@ class AppointmentRepository {
           patientPhone = r.phone_encrypted;
         }
       }
+      let citizenId = '';
+      if (r.citizen_id_encrypted) {
+        try {
+          citizenId = decrypt(r.citizen_id_encrypted);
+        } catch (e) {
+          citizenId = r.citizen_id_encrypted;
+        }
+      }
       return {
         ...r,
         appointment_id: r.appointment_id || r.id,
-        patient_phone: patientPhone
+        phone_number: patientPhone,
+        patient_phone: patientPhone,
+        citizen_id: citizenId
       };
     });
 
     return { rows: mappedRows, total };
+  }
+
+  /**
+   * Alias tương thích cho findAppointments
+   */
+  async listAppointments(clinicId, filters = {}) {
+    return this.findAppointments(clinicId, filters);
   }
 
   /**
@@ -233,12 +250,48 @@ class AppointmentRepository {
     const pool = this._getPool(clinicId);
     const aId = Number(appointmentId);
     const [rows] = await pool.query(
-      `SELECT id, id AS appointment_id, patient_id, doctor_id, clinic_id, slot_time, status, created_at
-       FROM appointments
-       WHERE id = ? LIMIT 1`,
+      `SELECT a.id, a.id AS appointment_id, a.patient_id, a.doctor_id, a.clinic_id, 
+              a.slot_time, a.status, a.created_at,
+              d.full_name AS doctor_name, d.specialty AS doctor_specialty,
+              p.full_name AS patient_name, p.phone_encrypted, p.citizen_id_encrypted
+       FROM appointments a
+       LEFT JOIN doctors d ON a.doctor_id = d.id
+       LEFT JOIN patients p ON a.patient_id = p.id
+       WHERE a.id = ? LIMIT 1`,
       [aId]
     );
-    return rows[0] || null;
+    if (!rows || rows.length === 0) return null;
+    const r = rows[0];
+    let patientPhone = '';
+    if (r.phone_encrypted) {
+      try {
+        patientPhone = decrypt(r.phone_encrypted);
+      } catch (e) {
+        patientPhone = r.phone_encrypted;
+      }
+    }
+    let citizenId = '';
+    if (r.citizen_id_encrypted) {
+      try {
+        citizenId = decrypt(r.citizen_id_encrypted);
+      } catch (e) {
+        citizenId = r.citizen_id_encrypted;
+      }
+    }
+    return {
+      ...r,
+      appointment_id: r.appointment_id || r.id,
+      phone_number: patientPhone,
+      patient_phone: patientPhone,
+      citizen_id: citizenId
+    };
+  }
+
+  /**
+   * Alias tương thích cho findById
+   */
+  async getAppointmentById(clinicId, appointmentId) {
+    return this.findById(clinicId, appointmentId);
   }
 
   /**

@@ -400,7 +400,7 @@ async function fetchAppointmentList() {
             <td class="px-3.5 py-3 font-mono font-bold text-xs text-slate-500">#${item.appointment_id}</td>
             <td class="px-3.5 py-3">
               <div class="font-semibold text-slate-800 text-xs">${item.patient_name || `Mã BN #${item.patient_id}`}</div>
-              ${item.patient_phone ? `<div class="text-[11px] text-slate-400 font-mono">${item.patient_phone}</div>` : ''}
+              ${(item.patient_phone || item.phone_number) ? `<div class="text-[11px] text-slate-400 font-mono">${item.patient_phone || item.phone_number}</div>` : ''}
             </td>
             <td class="px-3.5 py-3">
               <div class="font-medium text-slate-700 text-xs">${item.doctor_name || `Bác sĩ #${item.doctor_id}`}</div>

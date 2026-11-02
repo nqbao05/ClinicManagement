@@ -533,13 +533,15 @@ class PatientRepository {
     if (!this.useMemory) {
       try {
         const pool = this.poolResolver(clinicId);
+        const phoneEnc = encrypt(updatedFields.phone_number);
+        const phoneBindex = generateBlindIndex(updatedFields.phone_number);
         await pool.query(
           `UPDATE patients SET
-            full_name = ?, phone_number = ?, gender = ?, date_of_birth = ?,
+            full_name = ?, phone_encrypted = ?, phone_bindex = ?, gender = ?, date_of_birth = ?,
             address = ?, blood_type = ?, medical_history = ?
-          WHERE patient_id = ?`,
+          WHERE id = ?`,
           [
-            updatedFields.full_name, updatedFields.phone_number, updatedFields.gender, updatedFields.date_of_birth,
+            updatedFields.full_name, phoneEnc, phoneBindex, updatedFields.gender, updatedFields.date_of_birth,
             updatedFields.address, updatedFields.blood_type, updatedFields.medical_history, existing.patient_id
           ]
         );
@@ -599,14 +601,14 @@ class PatientRepository {
 
     if (filters.citizen_id) {
       const bindex = generateBlindIndex(String(filters.citizen_id).trim());
-      conditions.push('(citizen_id_bindex = ? OR identity_card = ?)');
-      params.push(bindex, String(filters.citizen_id).trim());
+      conditions.push('citizen_id_bindex = ?');
+      params.push(bindex);
     }
 
     if (filters.phone_number) {
       const bindex = generateBlindIndex(String(filters.phone_number).trim());
-      conditions.push('(phone_bindex = ? OR phone_number = ?)');
-      params.push(bindex, String(filters.phone_number).trim());
+      conditions.push('phone_bindex = ?');
+      params.push(bindex);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
