@@ -89,6 +89,15 @@ async function seedNode(connection, clinicId, dbName) {
   for (const stmt of statements) {
     await connection.query(stmt);
   }
+
+  // Tương thích ngược: Đảm bảo các cột mới tồn tại nếu bảng đã được tạo từ trước
+  try { await connection.query('ALTER TABLE clinics MODIFY COLUMN location VARCHAR(255) NULL DEFAULT NULL'); } catch (e) {}
+  try { await connection.query('ALTER TABLE clinics MODIFY COLUMN db_node_ip VARCHAR(100) NULL DEFAULT NULL'); } catch (e) {}
+  try { await connection.query('ALTER TABLE clinics ADD COLUMN address VARCHAR(255) NULL'); } catch (e) {}
+  try { await connection.query('ALTER TABLE clinics ADD COLUMN phone VARCHAR(50) NULL'); } catch (e) {}
+  try { await connection.query('ALTER TABLE patients ADD COLUMN blood_type VARCHAR(10) NULL'); } catch (e) {}
+  try { await connection.query('ALTER TABLE patients ADD COLUMN medical_history TEXT NULL'); } catch (e) {}
+
   console.log(`✓ Đã tạo các bảng (clinics, doctors, patients, appointments) tại ${dbName}`);
 
   // Seed Clinics
@@ -184,4 +193,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { seedNode, SCHEMA_SQL };
+module.exports = { initDb: main, main, seedNode, SCHEMA_SQL };
