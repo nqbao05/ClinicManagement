@@ -158,6 +158,11 @@ class AppointmentRepository {
     let whereClause = 'WHERE a.clinic_id = ?';
     const params = [Number(clinicId)];
 
+    if (filters.patient_id) {
+      whereClause += ' AND a.patient_id = ?';
+      params.push(Number(filters.patient_id));
+    }
+
     if (filters.doctor_id) {
       whereClause += ' AND a.doctor_id = ?';
       params.push(Number(filters.doctor_id));
@@ -198,6 +203,37 @@ class AppointmentRepository {
     );
 
     return { rows, total };
+  }
+
+  /**
+   * Tìm thông tin lịch hẹn theo ID
+   * @param {number} clinicId 
+   * @param {number} appointmentId 
+   */
+  async findById(clinicId, appointmentId) {
+    const pool = this.getPool(clinicId);
+    const [rows] = await pool.query(
+      `SELECT appointment_id, patient_id, doctor_id, clinic_id, slot_time, status, created_at
+       FROM appointments
+       WHERE appointment_id = ? LIMIT 1`,
+      [Number(appointmentId)]
+    );
+    return rows[0] || null;
+  }
+
+  /**
+   * Cập nhật trạng thái lịch hẹn
+   * @param {number} clinicId 
+   * @param {number} appointmentId 
+   * @param {string} status 
+   */
+  async updateStatus(clinicId, appointmentId, status) {
+    const pool = this.getPool(clinicId);
+    await pool.query(
+      `UPDATE appointments SET status = ? WHERE appointment_id = ?`,
+      [status, Number(appointmentId)]
+    );
+    return this.findById(clinicId, appointmentId);
   }
 }
 

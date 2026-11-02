@@ -1,5 +1,7 @@
 const NotFoundError = require('../../common/errors/not-found.error');
 const ConflictError = require('../../common/errors/conflict.error');
+const BadRequestError = require('../../common/errors/bad-request.error');
+const ForbiddenError = require('../../common/errors/forbidden.error');
 const { validateAppointmentQuery } = require('./appointment.dto');
 const Appointment = require('./appointment.model');
 
@@ -103,15 +105,27 @@ class AppointmentService {
   }
 
   /**
-   * Lấy danh sách lịch hẹn khám kèm phân trang
+   * Lấy danh sách lịch hẹn khám kèm phân trang (kèm logic phân quyền RBAC)
+   * - admin: Xem toàn bộ
+   * - staff: Giới hạn theo clinic_id của nhân viên
+   * - patient: Tự động lọc chỉ xem lịch hẹn của chính mình
    */
-  async getAppointments(clinicId, rawQuery = {}) {
-    const validatedQuery = validateAppointmentQuery(rawQuery);
+  async getAppointments(clinicId, rawQuery = {}, user = null) {
+    const query = { ...rawQuery };
+    if (user) {
+      if (user.role === 'patient') {
+        query.patient_id = user.patient_id;
+      } else if (user.role === 'staff' && user.clinic_id) {
+        clinicId = user.clinic_id;
+      }
+    }
+
+    const validatedQuery = validateAppointmentQuery(query);
     const effectiveClinicId = Number(validatedQuery.clinic_id || clinicId || 1);
 
     const { rows, total } = await this.appointmentRepository.findAppointments(
       effectiveClinicId,
-      validatedQuery
+      { ...validatedQuery, ...(query.patient_id ? { patient_id: query.patient_id } : {}) }
     );
 
     const totalPages = Math.ceil(total / validatedQuery.limit) || 1;
@@ -127,6 +141,37 @@ class AppointmentService {
         hasPrev: validatedQuery.page > 1
       }
     };
+  }
+
+  /**
+   * Cập nhật trạng thái lịch hẹn khám (RBAC & State Machine)
+   * - admin, staff: Được phép cập nhật 'Confirmed', 'Completed', 'Cancelled'
+   * - patient: Chỉ được hủy ('Cancelled') lịch hẹn của chính mình khi trạng thái là 'Pending'
+   */
+  async updateStatus(appointmentId, newStatus, clinicId = 1, user = null) {
+    const validStatuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
+    if (!validStatuses.includes(newStatus)) {
+      throw new BadRequestError(`Trạng thái không hợp lệ. Cho phép: ${validStatuses.join(', ')}`);
+    }
+
+    const appointment = await this.appointmentRepository.findById(clinicId, appointmentId);
+    if (!appointment) {
+      throw new NotFoundError(`Không tìm thấy lịch hẹn #${appointmentId}`);
+    }
+
+    if (user && user.role === 'patient') {
+      if (appointment.patient_id !== user.patient_id) {
+        throw new ForbiddenError('Không thể thao tác trên lịch hẹn của bệnh nhân khác!');
+      }
+      if (newStatus !== 'Cancelled') {
+        throw new ForbiddenError('Bệnh nhân chỉ có quyền hủy lịch hẹn!');
+      }
+      if (appointment.status !== 'Pending') {
+        throw new ConflictError('Chỉ có thể hủy lịch hẹn đang ở trạng thái Chờ xác nhận (Pending)!');
+      }
+    }
+
+    return await this.appointmentRepository.updateStatus(clinicId, appointmentId, newStatus);
   }
 }
 

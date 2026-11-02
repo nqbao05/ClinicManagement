@@ -15,6 +15,7 @@ class AppointmentController {
     // Bind this cho các methods để sử dụng làm Express route handlers
     this.createAppointment = this.createAppointment.bind(this);
     this.getAppointments = this.getAppointments.bind(this);
+    this.updateAppointmentStatus = this.updateAppointmentStatus.bind(this);
   }
 
   /**
@@ -45,11 +46,27 @@ class AppointmentController {
       // Trích xuất mã chi nhánh ưu tiên: Query param -> Header X-Clinic-ID -> Mặc định: 1
       const clinicId = Number(req.query.clinic_id || req.headers['x-clinic-id'] || 1);
 
-      // Gọi service xử lý truy vấn phân trang
-      const { data, pagination } = await this.appointmentService.getAppointments(clinicId, req.query);
+      // Gọi service xử lý truy vấn phân trang kèm quyền người dùng
+      const { data, pagination } = await this.appointmentService.getAppointments(clinicId, req.query, req.user);
 
       // Trả về phản hồi thành công (200 OK)
       return sendSuccess(res, 200, 'Lấy danh sách lịch hẹn thành công', { data, pagination });
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  /**
+   * Cập nhật trạng thái lịch hẹn khám (PATCH /api/v1/appointments/:id/status)
+   */
+  async updateAppointmentStatus(req, res, next) {
+    try {
+      const appointmentId = Number(req.params.id);
+      const { status } = req.body;
+      const clinicId = Number(req.query.clinic_id || req.headers['x-clinic-id'] || (req.user && req.user.clinic_id) || 1);
+
+      const result = await this.appointmentService.updateStatus(appointmentId, status, clinicId, req.user);
+      return sendSuccess(res, 200, 'Cập nhật trạng thái lịch hẹn thành công', result);
     } catch (error) {
       return next(error);
     }

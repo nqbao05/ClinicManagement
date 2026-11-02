@@ -2,6 +2,7 @@ const express = require('express');
 const { createPatientController } = require('./patient.controller');
 const PatientService = require('./patient.service');
 const PatientRepository = require('./patient.repository');
+const { authenticate, authorize, authorizePatientSelf } = require('../../common/middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -202,9 +203,14 @@ function createPatientV1Routes(service) {
   const patientService = service || new PatientService(new PatientRepository());
   const controller = createPatientController(patientService);
 
-  router.post('/', (req, res, next) => controller.createPatientV1(req, res, next));
-  router.get('/', (req, res, next) => controller.getPatientsV1(req, res, next));
-  router.get('/:id', (req, res, next) => controller.getPatientDetail(req, res, next));
+  // Đăng ký mới hồ sơ bệnh nhân (Admin, Staff, Patient tự đăng ký)
+  router.post('/', authenticate, authorize('admin', 'staff', 'patient'), (req, res, next) => controller.createPatientV1(req, res, next));
+
+  // Tra cứu danh sách hồ sơ bệnh nhân (Chỉ Admin & Staff được phép xem danh sách tổng)
+  router.get('/', authenticate, authorize('admin', 'staff'), (req, res, next) => controller.getPatientsV1(req, res, next));
+
+  // Tra cứu chi tiết hồ sơ bệnh nhân (Admin, Staff hoặc chính bệnh nhân đó)
+  router.get('/:id', authenticate, authorizePatientSelf, (req, res, next) => controller.getPatientDetail(req, res, next));
 
   return router;
 }

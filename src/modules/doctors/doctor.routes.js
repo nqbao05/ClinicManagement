@@ -2,6 +2,7 @@ const express = require('express');
 const { createDoctorController } = require('./doctor.controller');
 const DoctorService = require('./doctor.service');
 const DoctorRepository = require('./doctor.repository');
+const { authenticate, authorize } = require('../../common/middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -51,8 +52,20 @@ function createDoctorRoutes(service) {
   const doctorService = service || new DoctorService(new DoctorRepository());
   const controller = createDoctorController(doctorService);
 
+  // Tuyến công khai (Public)
   router.get('/', controller.getDoctors);
   router.get('/:id', controller.getDoctorById);
+
+  // Tuyến quản trị (Admin Only)
+  router.post('/', authenticate, authorize('admin'), (req, res) => {
+    res.status(201).json({ success: true, message: 'Thêm bác sĩ thành công' });
+  });
+  router.put('/:id', authenticate, authorize('admin'), (req, res) => {
+    res.status(200).json({ success: true, message: 'Cập nhật bác sĩ thành công' });
+  });
+  router.delete('/:id', authenticate, authorize('admin'), (req, res) => {
+    res.status(200).json({ success: true, message: 'Xóa bác sĩ thành công' });
+  });
 
   return router;
 }

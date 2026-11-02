@@ -2,6 +2,7 @@ const express = require('express');
 const { createDashboardController } = require('./dashboard.controller');
 const DashboardService = require('./dashboard.service');
 const DashboardRepository = require('./dashboard.repository');
+const { authenticate, authorize } = require('../../common/middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -109,7 +110,8 @@ function createDashboardRoutes(service) {
   const dashboardService = service || new DashboardService(new DashboardRepository());
   const controller = createDashboardController(dashboardService);
 
-  router.get('/stats', controller.getAggregatedStats);
+  // Bắt buộc quyền Admin (khóa hoàn toàn staff và patient)
+  router.get('/stats', authenticate, authorize('admin'), controller.getAggregatedStats);
 
   return router;
 }

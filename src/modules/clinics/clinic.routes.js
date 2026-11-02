@@ -2,6 +2,7 @@ const express = require('express');
 const { createClinicController } = require('./clinic.controller');
 const ClinicService = require('./clinic.service');
 const ClinicRepository = require('./clinic.repository');
+const { authenticate, authorize } = require('../../common/middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -43,8 +44,20 @@ function createClinicRoutes(service) {
   const clinicService = service || new ClinicService(new ClinicRepository());
   const controller = createClinicController(clinicService);
 
+  // Tuyến công khai (Public)
   router.get('/', controller.getClinics);
   router.get('/:id', controller.getClinicById);
+
+  // Tuyến quản trị (Admin Only)
+  router.post('/', authenticate, authorize('admin'), (req, res) => {
+    res.status(201).json({ success: true, message: 'Tạo cơ sở khám chữa bệnh thành công' });
+  });
+  router.put('/:id', authenticate, authorize('admin'), (req, res) => {
+    res.status(200).json({ success: true, message: 'Cập nhật cơ sở thành công' });
+  });
+  router.delete('/:id', authenticate, authorize('admin'), (req, res) => {
+    res.status(200).json({ success: true, message: 'Xóa cơ sở thành công' });
+  });
 
   return router;
 }

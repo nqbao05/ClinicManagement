@@ -2,6 +2,7 @@ const express = require('express');
 const { createAppointmentController } = require('./appointment.controller');
 const AppointmentService = require('./appointment.service');
 const AppointmentRepository = require('./appointment.repository');
+const { authenticate, authorize } = require('../../common/middlewares/auth.middleware');
 
 /**
  * @swagger
@@ -252,7 +253,8 @@ function createAppointmentV1Routes(service) {
    *       500:
    *         description: Lỗi máy chủ nội bộ
    */
-  router.post('/', controller.createAppointment);
+  // Đặt lịch khám mới (admin, staff, patient)
+  router.post('/', authenticate, authorize('admin', 'staff', 'patient'), controller.createAppointment);
 
   /**
    * @swagger
@@ -321,7 +323,11 @@ function createAppointmentV1Routes(service) {
    *       400:
    *         description: Tham số query không hợp lệ
    */
-  router.get('/', controller.getAppointments);
+  // Lấy danh sách lịch hẹn (admin, staff, patient)
+  router.get('/', authenticate, authorize('admin', 'staff', 'patient'), controller.getAppointments);
+
+  // Cập nhật trạng thái lịch hẹn (admin, staff: Confirmed/Completed/Cancelled; patient: Cancelled)
+  router.patch('/:id/status', authenticate, authorize('admin', 'staff', 'patient'), controller.updateAppointmentStatus);
 
   return router;
 }
